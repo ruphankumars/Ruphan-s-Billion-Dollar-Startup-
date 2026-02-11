@@ -1,0 +1,22 @@
+# Source
+src/
+test/
+data/
+
+# Config
+tsconfig.json
+tsup.config.ts
+vitest.config.ts
+.eslintrc.cjs
+.github/
+.cortexos/
+
+# Dev files
+*.test.ts
+*.spec.ts
+coverage/
+.vscode/
+.idea/
+
+# OS
+.DS_Store

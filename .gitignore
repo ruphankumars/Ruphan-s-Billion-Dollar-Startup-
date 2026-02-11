@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.production
+
+# CortexOS local data
+.cortexos/memory/
+.cortexos/worktrees/
+.cortexos/logs/
+.cortexos/*.db
+.cortexos/*.sqlite
+
+# Test coverage
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Pack files
+*.tgz

@@ -1,0 +1,42 @@
+# CortexOS Configuration Example
+# Copy this to .cortexos.yaml and customize
+
+# Default LLM provider
+# Options: anthropic, openai, google, ollama
+provider: anthropic
+
+# Default model
+model: claude-3-5-sonnet-20241022
+
+# Budget limits
+budget:
+  maxCostPerRun: 5.00
+  maxCostPerDay: 50.00
+  warningThreshold: 0.8
+
+# Memory system
+memory:
+  enabled: true
+  decay: true
+  decayHalfLife: 30
+
+# Agent configuration
+agents:
+  maxParallel: 4
+  maxIterations: 20
+  timeout: 300
+
+# Quality gates
+quality:
+  enabled: true
+  gates:
+    - syntax
+    - lint
+
+# File patterns to ignore
+ignore:
+  - node_modules
+  - dist
+  - build
+  - .git
+  - coverage
