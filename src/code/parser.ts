@@ -1,8 +1,8 @@
 /**
  * Code Parser
  * Provides code analysis utilities.
- * Phase 3 will add web-tree-sitter for AST parsing.
- * MVP uses regex-based parsing for key patterns.
+ * Uses regex-based parsing for key patterns.
+ * See also: ASTParser for multi-language structural analysis.
  */
 
 import { readFileSync } from 'fs';

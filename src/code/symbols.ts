@@ -1,7 +1,7 @@
 /**
  * Symbol Extraction
  * Extracts function names, class names, exports, and other symbols
- * from source code using regex patterns (Phase 3 adds tree-sitter AST).
+ * from source code using regex patterns. See ASTParser for deeper analysis.
  */
 
 export interface CodeSymbol {

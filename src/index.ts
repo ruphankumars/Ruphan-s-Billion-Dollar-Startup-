@@ -53,7 +53,7 @@ export { IPCMessageBus, type IPCBusOptions, type IPCEnvelope } from './agents/ip
 export { getRole, getAllRoles } from './agents/roles/index.js';
 export type { AgentRoleName, AgentTask, AgentConfig, AgentState, AgentRole } from './agents/types.js';
 
-// Sandbox (Phase 2)
+// Sandbox
 export { WorktreeManager, type WorktreeInfo } from './agents/sandbox/worktree.js';
 export { MergeManager, type MergeResult } from './agents/sandbox/merger.js';
 export { FileLockManager } from './agents/sandbox/lock.js';

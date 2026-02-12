@@ -1,7 +1,7 @@
 /**
  * Swarm Coordinator
- * Manages multi-agent execution in waves.
- * Phase 2: Optional pool routing + worktree isolation.
+ * Manages multi-agent execution in waves with optional pool routing,
+ * worktree isolation, and IPC-based inter-agent messaging.
  * Falls back to in-process Promise.all when pool/worktrees not provided.
  */
 
@@ -18,6 +18,7 @@ import { Timer } from '../utils/timer.js';
 import type { AgentPool } from './pool.js';
 import type { WorktreeManager, WorktreeInfo } from './sandbox/worktree.js';
 import type { MergeManager } from './sandbox/merger.js';
+import type { MessageBus } from './message-bus.js';
 
 const logger = getLogger();
 
@@ -28,10 +29,10 @@ export interface CoordinatorOptions {
   events: EventBus;
   maxParallel?: number;
   systemPrompt?: string;
-  // Phase 2: Optional pool + worktree integration
   pool?: AgentPool;
   worktreeManager?: WorktreeManager;
   mergeManager?: MergeManager;
+  messageBus?: MessageBus;
   executionId?: string;
 }
 
@@ -42,10 +43,10 @@ export class SwarmCoordinator {
   private events: EventBus;
   private maxParallel: number;
   private systemPrompt: string;
-  // Phase 2
   private pool: AgentPool | undefined;
   private worktreeManager: WorktreeManager | undefined;
   private mergeManager: MergeManager | undefined;
+  private messageBus: MessageBus | undefined;
   private executionId: string;
 
   constructor(options: CoordinatorOptions) {
@@ -58,6 +59,7 @@ export class SwarmCoordinator {
     this.pool = options.pool;
     this.worktreeManager = options.worktreeManager;
     this.mergeManager = options.mergeManager;
+    this.messageBus = options.messageBus;
     this.executionId = options.executionId ?? 'exec-default';
   }
 
@@ -83,7 +85,7 @@ export class SwarmCoordinator {
         .map(id => taskMap.get(id))
         .filter(Boolean) as DecomposedTask[];
 
-      // Phase 2: Create worktrees for this wave if available
+      // Create worktrees for this wave if available
       let worktreeMap: Map<string, WorktreeInfo> | undefined;
       if (this.worktreeManager?.isAvailable()) {
         try {
@@ -98,7 +100,7 @@ export class SwarmCoordinator {
 
       const waveResults = await this.executeWave(waveTasks, resultMap, worktreeMap);
 
-      // Phase 2: Merge worktree results back
+      // Merge worktree results back
       if (worktreeMap && this.mergeManager) {
         for (const result of waveResults) {
           const wtInfo = worktreeMap.get(result.taskId);

@@ -19,6 +19,7 @@ export const CortexConfigSchema = z.object({
     maxParallel: z.number().min(1).max(16).default(4),
     maxIterations: z.number().min(1).max(100).default(25),
     worktreesEnabled: z.boolean().default(true),
+    useChildProcess: z.boolean().default(false),
   }).default({}),
   cost: z.object({
     budgetPerRun: z.number().default(1.0),

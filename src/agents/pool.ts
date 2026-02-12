@@ -250,14 +250,10 @@ export class AgentPool extends EventEmitter {
     };
 
     if (!provider) {
-      // No provider: return placeholder (backwards compat with MVP tests)
-      return {
-        taskId: item.task.id,
-        success: true,
-        response: `Pool execution placeholder for task: ${item.task.description}`,
-        filesChanged: [],
-        tokensUsed: { input: 0, output: 0, total: 0 },
-      };
+      throw new Error(
+        `No LLM provider configured for in-process pool execution (task: ${item.task.id}). ` +
+        'Ensure a provider is passed to AgentPool options.',
+      );
     }
 
     const role = getRole(item.task.role);

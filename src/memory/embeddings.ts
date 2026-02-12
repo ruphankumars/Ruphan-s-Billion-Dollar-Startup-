@@ -1,7 +1,7 @@
 /**
  * Local Embedding Engine
- * Uses TF-IDF + cosine similarity for MVP (no external dependencies)
- * Phase 3 will add MiniLM via @huggingface/transformers
+ * Uses TF-IDF + cosine similarity (no external dependencies).
+ * Provides lightweight embedding for memory search and deduplication.
  */
 
 import type { EmbeddingEngine } from './types.js';

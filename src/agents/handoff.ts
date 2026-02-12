@@ -60,8 +60,7 @@ export class HandoffManager {
       },
     });
 
-    // In MVP, handoffs are recorded but not executed asynchronously
-    // The coordinator handles re-assignment in Phase 2
+    // Handoff is broadcast on the bus; HandoffExecutor picks it up asynchronously
     return {
       accepted: true,
       reason: 'Handoff queued for coordinator processing',

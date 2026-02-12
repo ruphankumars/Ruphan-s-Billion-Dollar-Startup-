@@ -27,6 +27,10 @@ import { SwarmCoordinator } from '../agents/coordinator.js';
 import { AgentPool } from '../agents/pool.js';
 import { WorktreeManager } from '../agents/sandbox/worktree.js';
 import { MergeManager } from '../agents/sandbox/merger.js';
+import { MessageBus } from '../agents/message-bus.js';
+import { IPCMessageBus } from '../agents/ipc-bus.js';
+import { HandoffManager } from '../agents/handoff.js';
+import { HandoffExecutor } from '../agents/handoff-executor.js';
 import { getRole } from '../agents/roles/index.js';
 import type { AgentTask, AgentRole } from '../agents/types.js';
 
@@ -75,6 +79,9 @@ export class CortexEngine {
   private repoMapper: RepoMapper;
   private coordinator: SwarmCoordinator | null = null;
   private pool: AgentPool | null = null;
+  private messageBus: MessageBus;
+  private handoffManager: HandoffManager;
+  private handoffExecutor: HandoffExecutor | null = null;
   private tracer: Tracer;
   private metrics: MetricsCollector;
   private pluginRegistry: PluginRegistry;
@@ -108,6 +115,10 @@ export class CortexEngine {
     this.memoryExtractor = new MemoryExtractor();
     this.repoMapper = new RepoMapper();
 
+    // Initialize inter-agent communication
+    this.messageBus = new MessageBus();
+    this.handoffManager = new HandoffManager(this.messageBus);
+
     // Initialize observability
     this.tracer = new Tracer();
     this.metrics = new MetricsCollector();
@@ -131,22 +142,55 @@ export class CortexEngine {
   }
 
   /**
-   * Initialize async components (provider registry)
+   * Initialize async components (provider registry, plugin wiring, pool, coordinator)
    */
   private async ensureInitialized(): Promise<void> {
     if (this.initialized) return;
     this.providerRegistry = await ProviderRegistry.create(this.config);
+
+    // Wire plugin-registered tools into the tool registry
+    for (const tool of this.pluginRegistry.getTools()) {
+      if (!this.toolRegistry.has(tool.name)) {
+        this.toolRegistry.register(tool);
+        logger.debug({ tool: tool.name }, 'Plugin tool merged into tool registry');
+      }
+    }
+
+    // Wire plugin-registered providers into the provider registry
+    for (const [name, provider] of this.pluginRegistry.getProviders()) {
+      if (!this.providerRegistry.has(name)) {
+        this.providerRegistry.register(name, provider);
+        logger.debug({ provider: name }, 'Plugin provider merged into provider registry');
+      }
+    }
+
+    // Wire plugin-registered gates — the verifier is rebuilt with gate list
+    const pluginGates = this.pluginRegistry.getGates();
+    if (pluginGates.size > 0) {
+      for (const [name, gate] of pluginGates) {
+        this.verifier.addGate(name, gate);
+        logger.debug({ gate: name }, 'Plugin gate merged into verifier');
+      }
+    }
 
     // Initialize pool + coordinator if provider is available
     const provider = this.getProviderFromRegistry();
     if (provider) {
       const tools = this.toolRegistry.list();
       const maxParallel = this.config.agents?.maxParallel ?? 4;
+      const useFork = this.config.agents?.useChildProcess === true && maxParallel > 1;
+
+      // Upgrade to IPC bus when running in fork mode
+      if (useFork) {
+        const ipcBus = new IPCMessageBus();
+        this.messageBus = ipcBus;
+        this.handoffManager = new HandoffManager(ipcBus);
+      }
 
       this.pool = new AgentPool({
         maxWorkers: maxParallel,
         workerScript: 'dist/workers/worker.js',
-        useChildProcess: false,
+        useChildProcess: useFork,
         provider,
         tools,
         toolContext: { workingDir: this.projectDir, executionId: 'engine' },
@@ -173,7 +217,18 @@ export class CortexEngine {
         pool: this.pool,
         worktreeManager,
         mergeManager,
+        messageBus: this.messageBus,
       });
+
+      // Start the handoff executor for async task delegation
+      this.handoffExecutor = new HandoffExecutor({
+        provider,
+        tools,
+        toolContext: { workingDir: this.projectDir, executionId: 'engine' },
+        messageBus: this.messageBus,
+        handoffManager: this.handoffManager,
+      });
+      this.handoffExecutor.start();
     }
 
     this.initialized = true;
@@ -629,10 +684,22 @@ export class CortexEngine {
     return this.pluginRegistry;
   }
 
+  getMessageBus(): MessageBus {
+    return this.messageBus;
+  }
+
+  getHandoffExecutor(): HandoffExecutor | null {
+    return this.handoffExecutor;
+  }
+
   async shutdown(): Promise<void> {
+    if (this.handoffExecutor) {
+      await this.handoffExecutor.stop();
+    }
     if (this.pool) {
       await this.pool.shutdown();
     }
+    this.messageBus.destroy();
     if (this.memoryManager) {
       await this.memoryManager.close();
     }

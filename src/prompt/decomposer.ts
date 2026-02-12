@@ -65,7 +65,7 @@ export class PromptDecomposer {
       });
     }
 
-    // Phase 2: Design (for complex or create tasks)
+    // Step 2: Design (for complex or create tasks)
     if (analysis.intent === 'create' && analysis.complexity > 0.5) {
       const researchId = tasks.length > 0 ? tasks[0].id : undefined;
       tasks.push({
@@ -81,7 +81,7 @@ export class PromptDecomposer {
       });
     }
 
-    // Phase 3: Implement
+    // Step 3: Implement
     const implementDeps = tasks.map(t => t.id);
     tasks.push({
       id: nanoid(8),

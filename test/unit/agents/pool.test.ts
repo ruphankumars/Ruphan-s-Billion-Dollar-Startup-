@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AgentPool } from '../../../src/agents/pool.js';
 import type { AgentTask } from '../../../src/agents/types.js';
+import type { LLMProvider } from '../../../src/providers/types.js';
 
 function createTask(id: string, role = 'developer' as const): AgentTask {
   return {
@@ -12,6 +13,23 @@ function createTask(id: string, role = 'developer' as const): AgentTask {
   };
 }
 
+function createMockProvider(): LLMProvider {
+  return {
+    name: 'mock',
+    models: ['mock-model'],
+    defaultModel: 'mock-model',
+    complete: vi.fn().mockResolvedValue({
+      content: 'Task completed successfully',
+      model: 'mock-model',
+      usage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
+      finishReason: 'stop' as const,
+    }),
+    stream: vi.fn(),
+    isAvailable: vi.fn().mockResolvedValue(true),
+    countTokens: vi.fn().mockReturnValue(10),
+  } as unknown as LLMProvider;
+}
+
 describe('AgentPool', () => {
   let pool: AgentPool;
 
@@ -19,7 +37,10 @@ describe('AgentPool', () => {
     pool = new AgentPool({
       maxWorkers: 2,
       workerScript: 'dist/workers/worker.js',
-      useChildProcess: false, // in-process mode for testing
+      useChildProcess: false,
+      provider: createMockProvider(),
+      tools: [],
+      toolContext: { workingDir: '/tmp', executionId: 'test' },
     });
   });
 

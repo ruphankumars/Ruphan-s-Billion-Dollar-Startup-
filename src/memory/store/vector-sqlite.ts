@@ -1,7 +1,7 @@
 /**
  * SQLite-based Vector Store
  * Stores embeddings and performs brute-force cosine similarity search
- * Good for up to ~100K vectors. Phase 3 adds LanceDB for scale.
+ * Good for up to ~100K vectors. Consolidation handled by MemoryConsolidator.
  */
 
 import type { VectorStore, VectorSearchResult } from '../types.js';

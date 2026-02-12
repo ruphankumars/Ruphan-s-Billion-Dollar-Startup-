@@ -1,7 +1,7 @@
 /**
  * Agent Message Bus
  * Enables inter-agent communication for handoffs and status updates.
- * MVP: Simple in-memory pub/sub. Phase 2: IPC-based.
+ * Simple in-memory pub/sub. Extended by IPCMessageBus for cross-process transport.
  */
 
 import { EventEmitter } from 'events';

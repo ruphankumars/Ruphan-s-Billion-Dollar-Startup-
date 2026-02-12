@@ -96,6 +96,17 @@ export class QualityVerifier {
   }
 
   /**
+   * Dynamically add a quality gate (e.g. from a plugin)
+   */
+  addGate(_name: string, gate: QualityGate): void {
+    // Avoid duplicates
+    if (!this.gates.some(g => g.name === gate.name)) {
+      this.gates.push(gate);
+      this.logger.debug({ gate: gate.name }, 'Quality gate added dynamically');
+    }
+  }
+
+  /**
    * Get list of enabled gates
    */
   getEnabledGates(): string[] {
