@@ -198,6 +198,27 @@ export {
   type SandboxViolation,
 } from './plugins/sandbox.js';
 
+// Built-in Plugins
+export {
+  MetricsDashboardPlugin,
+  MetricsStore,
+  CodeComplexityPlugin,
+  analyzeComplexity,
+  GitWorkflowPlugin,
+  classifyChanges,
+  detectSensitiveFiles,
+  DependencyAuditPlugin,
+  auditDependencies,
+  parsePackageJson,
+  classifyLicense,
+  DocumentationGenPlugin,
+  analyzeDocCoverage,
+  generateDocs,
+  getBuiltinPlugins,
+  getBuiltinPlugin,
+  listBuiltinPlugins,
+} from './plugins/builtin/index.js';
+
 // Reasoning
 export { ReasoningOrchestrator } from './reasoning/orchestrator.js';
 export { ReActAgent } from './reasoning/react/react-agent.js';

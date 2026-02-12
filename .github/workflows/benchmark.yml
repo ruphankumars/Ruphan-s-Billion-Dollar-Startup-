@@ -1,0 +1,26 @@
+name: Benchmark
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    name: Performance Benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+      - name: Run benchmark suite
+        run: npx vitest run test/integration/competitive-audit-benchmark.test.ts --reporter=verbose
+      - name: Run full test suite with timing
+        run: npx vitest run --reporter=verbose 2>&1 | tail -30
