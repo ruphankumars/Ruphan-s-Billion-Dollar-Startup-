@@ -66,7 +66,13 @@ export class AnthropicProvider extends BaseLLMProvider {
       model: request.model || this.defaultModel,
       max_tokens: request.maxTokens || 4096,
       messages: anthropicMessages as Anthropic.MessageParam[],
-      ...(systemMessage ? { system: systemMessage.content } : {}),
+      ...(systemMessage ? {
+        system: [{
+          type: 'text' as const,
+          text: systemMessage.content,
+          cache_control: { type: 'ephemeral' as const },
+        }],
+      } : {}),
       ...(tools && tools.length > 0 ? { tools } : {}),
       ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
     };
@@ -88,6 +94,15 @@ export class AnthropicProvider extends BaseLLMProvider {
       }
     }
 
+    // Extract prompt cache statistics from Anthropic response
+    const usageRaw = response.usage as unknown as Record<string, number>;
+    const cacheStats = (usageRaw.cache_creation_input_tokens !== undefined || usageRaw.cache_read_input_tokens !== undefined)
+      ? {
+          cacheCreationInputTokens: usageRaw.cache_creation_input_tokens ?? 0,
+          cacheReadInputTokens: usageRaw.cache_read_input_tokens ?? 0,
+        }
+      : undefined;
+
     return {
       content,
       toolCalls,
@@ -98,6 +113,7 @@ export class AnthropicProvider extends BaseLLMProvider {
         totalTokens: response.usage.input_tokens + response.usage.output_tokens,
       },
       finishReason: response.stop_reason === 'tool_use' ? 'tool_calls' : 'stop',
+      cacheStats,
       raw: response,
     };
   }
@@ -145,7 +161,13 @@ export class AnthropicProvider extends BaseLLMProvider {
       model: request.model || this.defaultModel,
       max_tokens: request.maxTokens || 4096,
       messages: anthropicMessages as Anthropic.MessageParam[],
-      ...(systemMessage ? { system: systemMessage.content } : {}),
+      ...(systemMessage ? {
+        system: [{
+          type: 'text' as const,
+          text: systemMessage.content,
+          cache_control: { type: 'ephemeral' as const },
+        }],
+      } : {}),
       ...(tools && tools.length > 0 ? { tools } : {}),
       ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
     });

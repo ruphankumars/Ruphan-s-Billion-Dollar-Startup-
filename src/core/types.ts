@@ -18,6 +18,8 @@ export const CortexConfigSchema = z.object({
     deepseekApiKey: z.string().optional(),
     fireworksApiKey: z.string().optional(),
     cohereApiKey: z.string().optional(),
+    failoverEnabled: z.boolean().default(false),
+    failoverOrder: z.array(z.string()).optional(),
   }).default({}),
   memory: z.object({
     enabled: z.boolean().default(true),
@@ -208,6 +210,13 @@ export interface QualityReport {
   issues?: QualityIssue[];
   autoFixed?: number;
   overallScore?: number;
+  appliedFixes?: Array<{
+    file: string;
+    rule?: string;
+    description: string;
+    type: 'lint' | 'syntax' | 'suggestion';
+    success: boolean;
+  }>;
   results?: Array<{
     gate: string;
     passed: boolean;
@@ -268,6 +277,7 @@ export interface CortexEvents {
   'memory:recall': unknown;
   'memory:store': unknown;
   'quality:gate': unknown;
+  'quality:autofix': unknown;
   'cost:update': unknown;
   'error': unknown;
   [key: string]: unknown;

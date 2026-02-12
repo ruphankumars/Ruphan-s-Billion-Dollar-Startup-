@@ -40,6 +40,7 @@ import type { LLMProvider } from '../providers/types.js';
 import { ToolRegistry } from '../tools/registry.js';
 
 import { QualityVerifier } from '../quality/verifier.js';
+import { AutoFixer } from '../quality/auto-fixer.js';
 
 import { CostTracker } from '../cost/tracker.js';
 import { BudgetManager } from '../cost/budget.js';
@@ -633,11 +634,50 @@ export class CortexEngine {
     const allChanges = this.collectFileChanges(results);
     const filePaths = allChanges.map(c => c.path);
 
-    return this.verifier.verify({
+    const qualityContext = {
       workingDir: this.projectDir,
       filesChanged: filePaths,
       executionId: context.id,
-    });
+    };
+
+    let report = await this.verifier.verify(qualityContext);
+
+    // Auto-fix loop: if verification fails and autoFix is enabled, try to fix
+    const autoFixEnabled = this.config.quality?.autoFix ?? false;
+    const maxRetries = this.config.quality?.maxRetries ?? 3;
+
+    if (!report.passed && autoFixEnabled) {
+      const autoFixer = new AutoFixer();
+
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        const fixableIssues = (report.issues ?? [])
+          .filter(i => i.autoFixable)
+          .map(i => ({ ...i, autoFixable: true as const }));
+        if (fixableIssues.length === 0) break;
+
+        logger.info(
+          { attempt: attempt + 1, maxRetries, fixableIssues: fixableIssues.length },
+          'Auto-fix: attempting to fix quality issues',
+        );
+
+        const fixes = await autoFixer.applyFixes(fixableIssues, qualityContext);
+        this.events.emit('quality:autofix', { attempt: attempt + 1, fixes });
+
+        // Re-verify after fixes
+        report = await this.verifier.verify(qualityContext);
+        report.appliedFixes = [
+          ...(report.appliedFixes ?? []),
+          ...fixes,
+        ];
+
+        if (report.passed) {
+          logger.info({ attempt: attempt + 1 }, 'Auto-fix: quality issues resolved');
+          break;
+        }
+      }
+    }
+
+    return report;
   }
 
   private async stageMemorize(results: AgentResult[]): Promise<number> {

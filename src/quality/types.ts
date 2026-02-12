@@ -29,3 +29,11 @@ export interface GateIssue {
   autoFixable: boolean;
   suggestion?: string;
 }
+
+export interface FixResult {
+  file: string;
+  rule?: string;
+  description: string;
+  type: 'lint' | 'syntax' | 'suggestion';
+  success: boolean;
+}

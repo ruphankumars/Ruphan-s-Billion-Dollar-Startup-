@@ -37,6 +37,10 @@ export interface LLMResponse {
     totalTokens: number;
   };
   finishReason: 'stop' | 'tool_calls' | 'length' | 'error';
+  cacheStats?: {
+    cacheCreationInputTokens: number;
+    cacheReadInputTokens: number;
+  };
   raw?: unknown;
 }
 
@@ -64,4 +68,13 @@ export interface ProviderConfig {
   defaultModel?: string;
   maxRetries?: number;
   timeout?: number;
+  circuitBreaker?: {
+    failureThreshold?: number;
+    resetTimeoutMs?: number;
+  };
+  rateLimit?: {
+    maxTokens?: number;
+    refillRate?: number;
+    refillIntervalMs?: number;
+  };
 }

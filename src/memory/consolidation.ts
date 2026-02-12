@@ -181,20 +181,26 @@ export class MemoryConsolidator {
 
   /**
    * Discover relationships between memories based on entity overlap and similarity.
-   * Returns count of new relations discovered (stored as metadata updates).
+   * Persists discovered relations as metadata updates when the store supports it.
+   * Returns count of new relations discovered.
    */
   private async discoverRelations(): Promise<number> {
-    // For now, just count potential relations without modifying metadata
-    // Full implementation would update relation fields in memory metadata
     let relationsFound = 0;
 
     const dummyVec = new Array(this.embedding.dimensions()).fill(0);
     const allResults = await this.store.search(dummyVec, Math.min(this.options.batchSize, 100));
 
+    if (allResults.length < 2) return 0;
+
     // Build entity → memory map
     const entityMap = new Map<string, string[]>();
+    const memoryEntities = new Map<string, Set<string>>();
+
     for (const result of allResults) {
       const entities = (result.metadata.entities as string[]) || [];
+      const entitySet = new Set(entities);
+      memoryEntities.set(result.id, entitySet);
+
       for (const entity of entities) {
         const list = entityMap.get(entity) || [];
         list.push(result.id);
@@ -202,11 +208,62 @@ export class MemoryConsolidator {
       }
     }
 
-    // Count shared entities as potential relations
-    for (const [entity, memIds] of entityMap) {
-      if (memIds.length > 1) {
-        relationsFound += memIds.length - 1;
+    // Discover and persist relations based on shared entities
+    const newRelations = new Map<string, Array<{ type: string; targetId: string; strength: number }>>();
+
+    for (const [_entity, memIds] of entityMap) {
+      if (memIds.length < 2) continue;
+
+      // Create pairwise relations for memories sharing this entity
+      for (let i = 0; i < memIds.length; i++) {
+        for (let j = i + 1; j < memIds.length; j++) {
+          const idA = memIds[i];
+          const idB = memIds[j];
+
+          // Calculate strength: shared entities / union of all entities
+          const entitiesA = memoryEntities.get(idA) || new Set();
+          const entitiesB = memoryEntities.get(idB) || new Set();
+          const shared = [...entitiesA].filter(e => entitiesB.has(e)).length;
+          const union = new Set([...entitiesA, ...entitiesB]).size;
+          const strength = union > 0 ? shared / union : 0;
+
+          if (strength < 0.1) continue; // Skip very weak relations
+
+          // Add bidirectional relations
+          if (!newRelations.has(idA)) newRelations.set(idA, []);
+          if (!newRelations.has(idB)) newRelations.set(idB, []);
+
+          newRelations.get(idA)!.push({ type: 'related_to', targetId: idB, strength });
+          newRelations.get(idB)!.push({ type: 'related_to', targetId: idA, strength });
+          relationsFound++;
+        }
       }
+    }
+
+    // Persist relations if the store supports updateMetadata
+    if ('updateMetadata' in this.store && typeof (this.store as any).updateMetadata === 'function') {
+      for (const [memId, relations] of newRelations) {
+        try {
+          // Deduplicate relations by targetId (keep strongest)
+          const deduped = new Map<string, { type: string; targetId: string; strength: number }>();
+          for (const rel of relations) {
+            const existing = deduped.get(rel.targetId);
+            if (!existing || rel.strength > existing.strength) {
+              deduped.set(rel.targetId, rel);
+            }
+          }
+
+          await (this.store as any).updateMetadata(memId, {
+            relations: [...deduped.values()],
+          });
+        } catch (err) {
+          logger.debug({ memId, error: (err as Error).message }, 'Failed to persist memory relations');
+        }
+      }
+    }
+
+    if (relationsFound > 0) {
+      logger.debug({ relationsFound }, 'Discovered and persisted memory relations');
     }
 
     return relationsFound;

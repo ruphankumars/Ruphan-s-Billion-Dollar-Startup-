@@ -42,6 +42,8 @@ export interface MemoryQuery {
   minImportance?: number;
   maxResults?: number;
   includeDecayed?: boolean;
+  /** Search across all projects in the global memory pool */
+  crossProject?: boolean;
 }
 
 export interface MemoryRecallResult {
@@ -102,6 +104,10 @@ export interface VectorStore {
   delete(id: string): Promise<void>;
   count(): Promise<number>;
   close(): Promise<void>;
+  /** Update metadata for an existing entry (optional — for relation discovery) */
+  updateMetadata?(id: string, updates: Record<string, unknown>): Promise<void>;
+  /** Get all entries (optional — for consolidation) */
+  getAll?(): Promise<Array<{ id: string; embedding: number[]; metadata: Record<string, unknown> }>>;
 }
 
 export interface VectorSearchResult {
@@ -137,4 +143,8 @@ export interface MemoryConfig {
   decayHalfLifeDays: number;
   minImportanceThreshold: number;
   consolidationInterval: number; // hours
+  /** Enable cross-project memory sharing via global pool */
+  crossProjectEnabled?: boolean;
+  /** Minimum importance for auto-syncing to global pool (default: 0.7) */
+  crossProjectThreshold?: number;
 }

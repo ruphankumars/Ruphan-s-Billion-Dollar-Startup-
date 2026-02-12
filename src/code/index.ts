@@ -23,3 +23,5 @@ export {
   type DiffHunk,
   type DiffLine,
 } from './differ.js';
+export { LSPClient, type LSPClientOptions, type LSPDiagnostic, type LSPLocation, type LSPHoverResult } from './lsp-client.js';
+export { LSPManager, type LanguageServerConfig } from './lsp-manager.js';

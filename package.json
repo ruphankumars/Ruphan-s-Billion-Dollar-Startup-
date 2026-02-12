@@ -1,6 +1,6 @@
 {
   "name": "cortexos",
-  "version": "0.1.0",
+  "version": "1.0.0-beta.1",
   "description": "The Operating System for AI Agent Teams — intelligent orchestration, persistent memory, and quality assurance for multi-agent AI workflows",
   "author": "CortexOS Contributors",
   "license": "MIT",
@@ -46,6 +46,7 @@
     "pino": "^9.6.0",
     "pino-pretty": "^13.0.0",
     "simple-git": "^3.27.0",
+    "web-tree-sitter": "^0.24.0",
     "ws": "^8.16.0",
     "yaml": "^2.7.0",
     "zod": "^3.24.0"
@@ -66,6 +67,8 @@
     "dist/",
     "data/",
     "README.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
     "LICENSE"
   ],
   "keywords": [

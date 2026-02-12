@@ -160,6 +160,31 @@ export class SQLiteVectorStore implements VectorStore {
   }
 
   /**
+   * Update metadata for an existing entry (merges with existing metadata).
+   * Used by relation discovery to persist discovered relations.
+   */
+  async updateMetadata(id: string, updates: Record<string, unknown>): Promise<void> {
+    await this.initialize();
+
+    if (this.db) {
+      const row = this.db.prepare('SELECT metadata FROM vectors WHERE id = ?').get(id) as { metadata: string } | undefined;
+      if (row) {
+        const existing = JSON.parse(row.metadata);
+        const merged = { ...existing, ...updates };
+        this.db.prepare('UPDATE vectors SET metadata = ? WHERE id = ?').run(
+          JSON.stringify(merged),
+          id,
+        );
+      }
+    } else {
+      const vec = this.inMemoryStore.get(id);
+      if (vec) {
+        vec.metadata = { ...vec.metadata, ...updates };
+      }
+    }
+  }
+
+  /**
    * Clear all vectors from the store
    */
   async clear(): Promise<void> {

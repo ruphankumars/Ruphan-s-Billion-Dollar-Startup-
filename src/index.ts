@@ -68,6 +68,9 @@ export { GoogleProvider } from './providers/google.js';
 export { OllamaProvider } from './providers/ollama.js';
 export { PROVIDER_CONFIGS, GROQ_CONFIG, MISTRAL_CONFIG, TOGETHER_CONFIG, DEEPSEEK_CONFIG, FIREWORKS_CONFIG, COHERE_CONFIG } from './providers/provider-configs.js';
 export { MiddlewareProvider, type MiddlewareOptions } from './providers/middleware.js';
+export { FailoverProvider, type FailoverOptions } from './providers/failover.js';
+export { CircuitBreaker, CircuitOpenError, type CircuitBreakerOptions, type CircuitState } from './providers/circuit-breaker.js';
+export { TokenBucketRateLimiter, type RateLimiterOptions } from './providers/rate-limiter.js';
 export type {
   LLMProvider,
   LLMMessage,
@@ -89,6 +92,7 @@ export { CortexMemoryManager } from './memory/manager.js';
 export { LocalEmbeddingEngine, cosineSimilarity } from './memory/embeddings.js';
 export { ProviderEmbeddingEngine, type ProviderEmbeddingConfig } from './memory/provider-embeddings.js';
 export { SQLiteVectorStore } from './memory/store/vector-sqlite.js';
+export { GlobalMemoryPool } from './memory/global-pool.js';
 export { MemoryExtractor } from './memory/pipeline/extractor.js';
 export { WorkingMemory } from './memory/types/working.js';
 export { MemoryConsolidator, type ConsolidationResult, type ConsolidationOptions } from './memory/consolidation.js';
@@ -123,6 +127,8 @@ export { ASTParser, type StructuralAnalysis, type FunctionInfo, type ClassInfo, 
 export { extractSymbols, type CodeSymbol, type SymbolType } from './code/symbols.js';
 export { detectLanguage, detectProjectLanguages, LANGUAGES } from './code/languages.js';
 export { generateDiff, formatDiff, summarizeChanges, type FileDiff } from './code/differ.js';
+export { LSPClient, type LSPClientOptions, type LSPDiagnostic, type LSPLocation, type LSPHoverResult } from './code/lsp-client.js';
+export { LSPManager, type LanguageServerConfig } from './code/lsp-manager.js';
 
 // Quality
 export { QualityVerifier } from './quality/verifier.js';
@@ -130,7 +136,8 @@ export { TypeCheckGate } from './quality/gates/type-check.js';
 export { TestGate } from './quality/gates/test.js';
 export { ReviewGate } from './quality/gates/review.js';
 export { SecurityGate } from './quality/gates/security.js';
-export type { QualityGate, QualityContext, GateResult, GateIssue } from './quality/types.js';
+export { AutoFixer } from './quality/auto-fixer.js';
+export type { QualityGate, QualityContext, GateResult, GateIssue, FixResult } from './quality/types.js';
 
 // Cost
 export { CostTracker } from './cost/tracker.js';

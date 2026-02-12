@@ -9,7 +9,7 @@ export default defineConfig([
     clean: true,
     target: 'node20',
     splitting: false,
-    external: ['better-sqlite3'],
+    external: ['better-sqlite3', 'web-tree-sitter'],
   },
   {
     entry: ['bin/cortexos.ts'],
@@ -18,7 +18,7 @@ export default defineConfig([
     target: 'node20',
     splitting: false,
     banner: { js: '#!/usr/bin/env node\n' },
-    external: ['better-sqlite3'],
+    external: ['better-sqlite3', 'web-tree-sitter'],
   },
   {
     entry: ['src/agents/worker.ts'],
@@ -27,6 +27,6 @@ export default defineConfig([
     target: 'node20',
     outDir: 'dist/workers',
     splitting: false,
-    external: ['better-sqlite3'],
+    external: ['better-sqlite3', 'web-tree-sitter'],
   },
 ]);

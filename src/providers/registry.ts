@@ -6,6 +6,7 @@ import { GoogleProvider } from './google.js';
 import { OllamaProvider } from './ollama.js';
 import { OpenAICompatibleProvider } from './openai-compatible.js';
 import { PROVIDER_CONFIGS } from './provider-configs.js';
+import { FailoverProvider } from './failover.js';
 import { getLogger } from '../core/logger.js';
 
 export class ProviderRegistry {
@@ -103,6 +104,39 @@ export class ProviderRegistry {
     if (this.providers.size === 0) {
       this.logger.warn('No LLM providers available. Set ANTHROPIC_API_KEY or OPENAI_API_KEY.');
     }
+  }
+
+  /**
+   * Get a provider with failover support.
+   * Returns a FailoverProvider that tries providers in the given order,
+   * falling back to the next on failure.
+   * @param order Optional ordered list of provider names. Default first, then all others.
+   */
+  getWithFailover(order?: string[]): LLMProvider {
+    let orderedProviders: LLMProvider[];
+
+    if (order && order.length > 0) {
+      orderedProviders = order
+        .filter(name => this.providers.has(name))
+        .map(name => this.providers.get(name)!);
+    } else {
+      // Default provider first, then all others
+      const defaultProv = this.providers.get(this.defaultProvider);
+      const others = [...this.providers.values()].filter(
+        p => p.name !== this.defaultProvider,
+      );
+      orderedProviders = defaultProv ? [defaultProv, ...others] : others;
+    }
+
+    if (orderedProviders.length === 0) {
+      throw new Error('No providers available for failover');
+    }
+
+    if (orderedProviders.length === 1) {
+      return orderedProviders[0]; // No need for failover wrapper
+    }
+
+    return new FailoverProvider(orderedProviders);
   }
 
   static async create(config: CortexConfig): Promise<ProviderRegistry> {

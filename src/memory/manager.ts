@@ -18,18 +18,24 @@ import type {
 } from './types.js';
 import { LocalEmbeddingEngine } from './embeddings.js';
 import { SQLiteVectorStore } from './store/vector-sqlite.js';
+import { GlobalMemoryPool } from './global-pool.js';
 import { nanoid } from 'nanoid';
 import { join } from 'path';
+import { getLogger } from '../core/logger.js';
+
+const logger = getLogger();
 
 export class CortexMemoryManager implements IMemoryManager {
   private embeddingEngine: EmbeddingEngine;
   private vectorStore: SQLiteVectorStore;
   private memoryCache: Map<string, MemoryEntry> = new Map();
   private config: MemoryConfig;
+  private globalPool?: GlobalMemoryPool;
 
-  constructor(config: MemoryConfig, embeddingEngine?: EmbeddingEngine) {
+  constructor(config: MemoryConfig, embeddingEngine?: EmbeddingEngine, globalPool?: GlobalMemoryPool) {
     this.config = config;
     this.embeddingEngine = embeddingEngine || new LocalEmbeddingEngine(384);
+    this.globalPool = globalPool;
 
     const dbPath = config.projectDir
       ? join(config.projectDir, '.cortexos', 'memory', 'vectors.db')
@@ -102,6 +108,35 @@ export class CortexMemoryManager implements IMemoryManager {
       });
     }
 
+    // Cross-project recall: merge global pool results if enabled
+    if (query.crossProject && this.globalPool && this.config.crossProjectEnabled) {
+      try {
+        const globalResults = await this.globalPool.recallAcrossProjects(query);
+        // Merge, deduplicating by content similarity
+        const existingContents = new Set(results.map(r => r.entry.content.substring(0, 100)));
+        for (const gr of globalResults) {
+          const contentKey = gr.entry.content.substring(0, 100);
+          if (!existingContents.has(contentKey)) {
+            results.push(gr);
+            existingContents.add(contentKey);
+          }
+        }
+      } catch (err) {
+        logger.debug({ error: (err as Error).message }, 'Cross-project recall failed, using local results only');
+      }
+    }
+
+    // Relation boost: if results have relations to other results, boost scores
+    const resultIds = new Set(results.map(r => r.entry.id));
+    for (const result of results) {
+      const relations = result.entry.metadata.relations || [];
+      for (const rel of relations) {
+        if (rel.type === 'related_to' && resultIds.has(rel.targetId)) {
+          result.finalScore += 0.05 * rel.strength;
+        }
+      }
+    }
+
     // Sort by final score and limit
     results.sort((a, b) => b.finalScore - a.finalScore);
     return results.slice(0, maxResults);
@@ -166,6 +201,21 @@ export class CortexMemoryManager implements IMemoryManager {
 
     // Cache in memory
     this.memoryCache.set(id, entry);
+
+    // Sync to global pool if cross-project is enabled and importance is above threshold
+    if (this.globalPool && this.config.crossProjectEnabled) {
+      const threshold = this.config.crossProjectThreshold ?? 0.7;
+      if (entry.importance >= threshold) {
+        try {
+          await this.globalPool.storeGlobal(content, {
+            ...options,
+            projectTag: this.config.projectDir || 'unknown',
+          });
+        } catch (err) {
+          logger.debug({ error: (err as Error).message }, 'Failed to sync memory to global pool');
+        }
+      }
+    }
 
     return entry;
   }
@@ -239,10 +289,20 @@ export class CortexMemoryManager implements IMemoryManager {
   }
 
   /**
+   * Get the global memory pool (if enabled)
+   */
+  getGlobalPool(): GlobalMemoryPool | undefined {
+    return this.globalPool;
+  }
+
+  /**
    * Close memory system and release resources
    */
   async close(): Promise<void> {
     await this.vectorStore.close();
+    if (this.globalPool) {
+      await this.globalPool.close();
+    }
     this.memoryCache.clear();
   }
 
