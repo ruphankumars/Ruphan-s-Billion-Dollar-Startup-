@@ -51,6 +51,11 @@ export { HandoffManager, type HandoffRequest } from './agents/handoff.js';
 export { getRole, getAllRoles } from './agents/roles/index.js';
 export type { AgentRoleName, AgentTask, AgentConfig, AgentState, AgentRole } from './agents/types.js';
 
+// Sandbox (Phase 2)
+export { WorktreeManager, type WorktreeInfo } from './agents/sandbox/worktree.js';
+export { MergeManager, type MergeResult } from './agents/sandbox/merger.js';
+export { FileLockManager } from './agents/sandbox/lock.js';
+
 // Providers
 export { BaseLLMProvider } from './providers/base.js';
 export { ProviderRegistry } from './providers/registry.js';
@@ -111,6 +116,9 @@ export { generateDiff, formatDiff, summarizeChanges, type FileDiff } from './cod
 
 // Quality
 export { QualityVerifier } from './quality/verifier.js';
+export { TypeCheckGate } from './quality/gates/type-check.js';
+export { TestGate } from './quality/gates/test.js';
+export { ReviewGate } from './quality/gates/review.js';
 export type { QualityGate, QualityContext, GateResult, GateIssue } from './quality/types.js';
 
 // Cost

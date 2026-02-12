@@ -7,6 +7,8 @@ import { Command } from 'commander';
 import { VERSION, NAME } from '../version.js';
 import { createRunCommand } from './commands/run.js';
 import { createInitCommand } from './commands/init.js';
+import { createChatCommand } from './commands/chat.js';
+import { createAgentsCommand } from './commands/agents.js';
 
 export function createCLI(): Command {
   const program = new Command();
@@ -26,6 +28,8 @@ export function createCLI(): Command {
   // Register commands
   program.addCommand(createRunCommand());
   program.addCommand(createInitCommand());
+  program.addCommand(createChatCommand());
+  program.addCommand(createAgentsCommand());
 
   // Default action: treat positional args as a prompt (like `cortexos "fix the auth bug"`)
   program

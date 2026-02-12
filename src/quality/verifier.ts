@@ -1,8 +1,12 @@
 import type { QualityGate, QualityContext, GateResult, GateIssue } from './types.js';
 import { SyntaxGate } from './gates/syntax.js';
 import { LintGate } from './gates/lint.js';
+import { TypeCheckGate } from './gates/type-check.js';
+import { TestGate } from './gates/test.js';
+import { ReviewGate } from './gates/review.js';
 import { getLogger } from '../core/logger.js';
 import type { QualityReport } from '../core/types.js';
+import type { LLMProvider } from '../providers/types.js';
 
 /**
  * Quality Verifier — runs a pipeline of quality gates on agent output
@@ -11,11 +15,14 @@ export class QualityVerifier {
   private gates: QualityGate[] = [];
   private logger = getLogger();
 
-  constructor(enabledGates: string[] = ['syntax', 'lint']) {
+  constructor(enabledGates: string[] = ['syntax', 'lint'], provider?: LLMProvider) {
     // Register available gates
     const availableGates: Record<string, QualityGate> = {
       syntax: new SyntaxGate(),
       lint: new LintGate(),
+      'type-check': new TypeCheckGate(),
+      test: new TestGate(),
+      review: new ReviewGate(provider),
     };
 
     // Enable only the requested gates
