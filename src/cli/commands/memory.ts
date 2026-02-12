@@ -163,9 +163,8 @@ async function clearMemories(options: { dir: string; force?: boolean }): Promise
   if (!ctx) return;
 
   try {
-    const stats = await ctx.manager.getStats();
-    // Close and let the user know
-    console.log(`\n  Cleared ${stats.totalMemories} memories.\n`);
+    const count = await ctx.manager.clearAll();
+    console.log(`\n  Cleared ${count} memories.\n`);
   } finally {
     await ctx.manager.close();
   }

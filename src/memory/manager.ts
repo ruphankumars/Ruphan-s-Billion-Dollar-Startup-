@@ -176,22 +176,63 @@ export class CortexMemoryManager implements IMemoryManager {
   }
 
   /**
-   * Get memory system statistics
+   * Get memory system statistics — aggregates type counts and importance from stored vectors
    */
   async getStats(): Promise<MemoryStats> {
     const totalMemories = await this.vectorStore.count();
 
+    // Aggregate stats from all stored vectors
+    const allVectors = await this.vectorStore.getAll();
+    const byType: Record<MemoryType, number> = {
+      working: 0,
+      episodic: 0,
+      semantic: 0,
+      procedural: 0,
+    };
+
+    let totalImportance = 0;
+    let oldest: Date | undefined;
+    let newest: Date | undefined;
+
+    for (const vec of allVectors) {
+      const type = (vec.metadata.type as MemoryType) || 'semantic';
+      if (type in byType) {
+        byType[type]++;
+      }
+
+      totalImportance += (vec.metadata.importance as number) || 0.5;
+
+      const createdAt = vec.metadata.createdAt
+        ? new Date(vec.metadata.createdAt as string)
+        : undefined;
+
+      if (createdAt) {
+        if (!oldest || createdAt < oldest) oldest = createdAt;
+        if (!newest || createdAt > newest) newest = createdAt;
+      }
+    }
+
+    const storageSize = await this.vectorStore.getStorageSize();
+
     return {
       totalMemories,
-      byType: {
-        working: 0,
-        episodic: 0,
-        semantic: 0,
-        procedural: 0,
-      },
-      averageImportance: 0.5,
-      storageSize: 0,
+      byType,
+      averageImportance: totalMemories > 0 ? totalImportance / totalMemories : 0,
+      storageSize,
+      oldestMemory: oldest,
+      newestMemory: newest,
     };
+  }
+
+  /**
+   * Clear all memories from the store and cache
+   */
+  async clearAll(): Promise<number> {
+    const stats = await this.getStats();
+    const count = stats.totalMemories;
+    await this.vectorStore.clear();
+    this.memoryCache.clear();
+    return count;
   }
 
   /**

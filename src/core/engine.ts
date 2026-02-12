@@ -187,9 +187,12 @@ export class CortexEngine {
         this.handoffManager = new HandoffManager(ipcBus);
       }
 
+      // Resolve worker script relative to this module for portability
+      const workerScript = new URL('../agents/worker.js', import.meta.url).pathname;
+
       this.pool = new AgentPool({
         maxWorkers: maxParallel,
-        workerScript: 'dist/workers/worker.js',
+        workerScript,
         useChildProcess: useFork,
         provider,
         tools,

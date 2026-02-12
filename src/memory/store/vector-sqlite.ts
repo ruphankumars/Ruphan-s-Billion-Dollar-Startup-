@@ -135,7 +135,44 @@ export class SQLiteVectorStore implements VectorStore {
   }
 
   /**
-   * Get all vectors from store
+   * Get all stored vectors (public — used by stats and consolidation)
+   */
+  async getAll(): Promise<StoredVector[]> {
+    return this.getAllVectors();
+  }
+
+  /**
+   * Get approximate storage size in bytes
+   */
+  async getStorageSize(): Promise<number> {
+    await this.initialize();
+    if (this.db) {
+      try {
+        const { statSync } = await import('fs');
+        const stat = statSync(this.dbPath);
+        return stat.size;
+      } catch {
+        return 0;
+      }
+    }
+    // In-memory: estimate based on entry count
+    return this.inMemoryStore.size * 4096;
+  }
+
+  /**
+   * Clear all vectors from the store
+   */
+  async clear(): Promise<void> {
+    await this.initialize();
+    if (this.db) {
+      this.db.exec('DELETE FROM vectors');
+    } else {
+      this.inMemoryStore.clear();
+    }
+  }
+
+  /**
+   * Get all vectors from store (internal)
    */
   private async getAllVectors(): Promise<StoredVector[]> {
     if (this.db) {
