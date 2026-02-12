@@ -154,6 +154,24 @@ cost:
     if (process.env.OLLAMA_BASE_URL) {
       providers.ollamaBaseUrl = process.env.OLLAMA_BASE_URL;
     }
+    if (process.env.GROQ_API_KEY) {
+      providers.groqApiKey = process.env.GROQ_API_KEY;
+    }
+    if (process.env.MISTRAL_API_KEY) {
+      providers.mistralApiKey = process.env.MISTRAL_API_KEY;
+    }
+    if (process.env.TOGETHER_API_KEY) {
+      providers.togetherApiKey = process.env.TOGETHER_API_KEY;
+    }
+    if (process.env.DEEPSEEK_API_KEY) {
+      providers.deepseekApiKey = process.env.DEEPSEEK_API_KEY;
+    }
+    if (process.env.FIREWORKS_API_KEY) {
+      providers.fireworksApiKey = process.env.FIREWORKS_API_KEY;
+    }
+    if (process.env.COHERE_API_KEY) {
+      providers.cohereApiKey = process.env.COHERE_API_KEY;
+    }
     if (process.env.CORTEXOS_DEFAULT_PROVIDER) {
       providers.default = process.env.CORTEXOS_DEFAULT_PROVIDER;
     }

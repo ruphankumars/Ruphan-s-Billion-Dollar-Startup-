@@ -2,6 +2,10 @@ import type { LLMProvider } from './types.js';
 import type { CortexConfig } from '../core/types.js';
 import { AnthropicProvider } from './anthropic.js';
 import { OpenAIProvider } from './openai.js';
+import { GoogleProvider } from './google.js';
+import { OllamaProvider } from './ollama.js';
+import { OpenAICompatibleProvider } from './openai-compatible.js';
+import { PROVIDER_CONFIGS } from './provider-configs.js';
 import { getLogger } from '../core/logger.js';
 
 export class ProviderRegistry {
@@ -53,6 +57,47 @@ export class ProviderRegistry {
     });
     if (await openai.isAvailable()) {
       this.register('openai', openai);
+    }
+
+    // Google Gemini
+    const google = new GoogleProvider({
+      apiKey: config.providers.googleApiKey,
+    });
+    if (await google.isAvailable()) {
+      this.register('google', google);
+    }
+
+    // Ollama (local)
+    const ollama = new OllamaProvider({
+      baseUrl: config.providers.ollamaBaseUrl,
+    });
+    if (await ollama.isAvailable()) {
+      this.register('ollama', ollama);
+    }
+
+    // OpenAI-compatible providers (Groq, Mistral, Together, DeepSeek, Fireworks, Cohere)
+    const configKeyMap: Record<string, string> = {
+      groq: 'groqApiKey',
+      mistral: 'mistralApiKey',
+      together: 'togetherApiKey',
+      deepseek: 'deepseekApiKey',
+      fireworks: 'fireworksApiKey',
+      cohere: 'cohereApiKey',
+    };
+
+    for (const providerConfig of PROVIDER_CONFIGS) {
+      const configKey = configKeyMap[providerConfig.name];
+      const apiKey = configKey
+        ? (config.providers as Record<string, unknown>)[configKey] as string | undefined
+        : undefined;
+
+      const provider = new OpenAICompatibleProvider(providerConfig, {
+        apiKey,
+      });
+
+      if (await provider.isAvailable()) {
+        this.register(providerConfig.name, provider);
+      }
     }
 
     if (this.providers.size === 0) {

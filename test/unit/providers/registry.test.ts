@@ -59,4 +59,63 @@ describe('ProviderRegistry', () => {
 
     expect(() => registry.get('nonexistent')).toThrow();
   });
+
+  it('should detect Google provider from API key', async () => {
+    process.env.GOOGLE_API_KEY = 'test-key';
+
+    const registry = await ProviderRegistry.create(makeConfig());
+    const providers = registry.listAvailable();
+
+    expect(providers).toContain('google');
+  });
+
+  it('should detect Groq provider from API key', async () => {
+    process.env.GROQ_API_KEY = 'test-key';
+
+    const registry = await ProviderRegistry.create(makeConfig());
+    const providers = registry.listAvailable();
+
+    expect(providers).toContain('groq');
+  });
+
+  it('should detect Mistral provider from API key', async () => {
+    process.env.MISTRAL_API_KEY = 'test-key';
+
+    const registry = await ProviderRegistry.create(makeConfig());
+    const providers = registry.listAvailable();
+
+    expect(providers).toContain('mistral');
+  });
+
+  it('should detect DeepSeek provider from API key', async () => {
+    process.env.DEEPSEEK_API_KEY = 'test-key';
+
+    const registry = await ProviderRegistry.create(makeConfig());
+    const providers = registry.listAvailable();
+
+    expect(providers).toContain('deepseek');
+  });
+
+  it('should detect multiple providers simultaneously', async () => {
+    process.env.ANTHROPIC_API_KEY = 'test-key';
+    process.env.OPENAI_API_KEY = 'test-key';
+    process.env.GROQ_API_KEY = 'test-key';
+
+    const registry = await ProviderRegistry.create(makeConfig());
+    const providers = registry.listAvailable();
+
+    expect(providers).toContain('anthropic');
+    expect(providers).toContain('openai');
+    expect(providers).toContain('groq');
+    expect(providers.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('should have has() method working for registered providers', async () => {
+    process.env.ANTHROPIC_API_KEY = 'test-key';
+
+    const registry = await ProviderRegistry.create(makeConfig());
+
+    expect(registry.has('anthropic')).toBe(true);
+    expect(registry.has('nonexistent')).toBe(false);
+  });
 });

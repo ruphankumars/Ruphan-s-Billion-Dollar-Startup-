@@ -63,6 +63,10 @@ export { BaseLLMProvider } from './providers/base.js';
 export { ProviderRegistry } from './providers/registry.js';
 export { AnthropicProvider } from './providers/anthropic.js';
 export { OpenAIProvider } from './providers/openai.js';
+export { OpenAICompatibleProvider, type OpenAICompatibleConfig } from './providers/openai-compatible.js';
+export { GoogleProvider } from './providers/google.js';
+export { OllamaProvider } from './providers/ollama.js';
+export { PROVIDER_CONFIGS, GROQ_CONFIG, MISTRAL_CONFIG, TOGETHER_CONFIG, DEEPSEEK_CONFIG, FIREWORKS_CONFIG, COHERE_CONFIG } from './providers/provider-configs.js';
 export { MiddlewareProvider, type MiddlewareOptions } from './providers/middleware.js';
 export type {
   LLMProvider,
@@ -83,6 +87,7 @@ export type { Tool, ToolParameters, ToolContext, ToolResult } from './tools/type
 // Memory
 export { CortexMemoryManager } from './memory/manager.js';
 export { LocalEmbeddingEngine, cosineSimilarity } from './memory/embeddings.js';
+export { ProviderEmbeddingEngine, type ProviderEmbeddingConfig } from './memory/provider-embeddings.js';
 export { SQLiteVectorStore } from './memory/store/vector-sqlite.js';
 export { MemoryExtractor } from './memory/pipeline/extractor.js';
 export { WorkingMemory } from './memory/types/working.js';
@@ -164,6 +169,15 @@ export type {
 export { Timer, formatDuration, measure } from './utils/timer.js';
 export { retry, withTimeout } from './utils/retry.js';
 export { estimateTokens, formatTokens, formatCost } from './utils/tokens.js';
+
+// Benchmark
+export { BenchmarkRunner, type BenchmarkEngineInterface } from './benchmark/runner.js';
+export { BenchmarkReporter } from './benchmark/reporter.js';
+export { BENCHMARK_TASKS, getTasksByCategory, getCategories } from './benchmark/tasks.js';
+export type {
+  BenchmarkTask, BenchmarkResult, BenchmarkReport, BenchmarkConfig,
+  BenchmarkSummary, BenchmarkCategoryResult, BenchmarkCategory, BenchmarkDifficulty,
+} from './benchmark/types.js';
 
 // Version
 export { VERSION, NAME } from './version.js';

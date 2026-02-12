@@ -14,6 +14,7 @@ import type {
   MemoryConfig,
   MemoryType,
   MemoryMetadata,
+  EmbeddingEngine,
 } from './types.js';
 import { LocalEmbeddingEngine } from './embeddings.js';
 import { SQLiteVectorStore } from './store/vector-sqlite.js';
@@ -21,14 +22,14 @@ import { nanoid } from 'nanoid';
 import { join } from 'path';
 
 export class CortexMemoryManager implements IMemoryManager {
-  private embeddingEngine: LocalEmbeddingEngine;
+  private embeddingEngine: EmbeddingEngine;
   private vectorStore: SQLiteVectorStore;
   private memoryCache: Map<string, MemoryEntry> = new Map();
   private config: MemoryConfig;
 
-  constructor(config: MemoryConfig) {
+  constructor(config: MemoryConfig, embeddingEngine?: EmbeddingEngine) {
     this.config = config;
-    this.embeddingEngine = new LocalEmbeddingEngine(384);
+    this.embeddingEngine = embeddingEngine || new LocalEmbeddingEngine(384);
 
     const dbPath = config.projectDir
       ? join(config.projectDir, '.cortexos', 'memory', 'vectors.db')
@@ -120,8 +121,10 @@ export class CortexMemoryManager implements IMemoryManager {
     // Generate embedding
     const embedding = await this.embeddingEngine.embed(content);
 
-    // Update vocabulary for better future embeddings
-    this.embeddingEngine.updateVocabulary([content]);
+    // Update vocabulary for better future embeddings (only for local engine)
+    if ('updateVocabulary' in this.embeddingEngine && typeof (this.embeddingEngine as any).updateVocabulary === 'function') {
+      (this.embeddingEngine as any).updateVocabulary([content]);
+    }
 
     const metadata: MemoryMetadata = {
       source: options.source ?? 'manual',

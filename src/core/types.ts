@@ -4,11 +4,20 @@ import { z } from 'zod';
 
 export const CortexConfigSchema = z.object({
   providers: z.object({
-    default: z.enum(['anthropic', 'openai', 'google', 'ollama']).default('anthropic'),
+    default: z.enum([
+      'anthropic', 'openai', 'google', 'ollama',
+      'groq', 'mistral', 'together', 'deepseek', 'fireworks', 'cohere',
+    ]).default('anthropic'),
     anthropicApiKey: z.string().optional(),
     openaiApiKey: z.string().optional(),
     googleApiKey: z.string().optional(),
     ollamaBaseUrl: z.string().default('http://localhost:11434'),
+    groqApiKey: z.string().optional(),
+    mistralApiKey: z.string().optional(),
+    togetherApiKey: z.string().optional(),
+    deepseekApiKey: z.string().optional(),
+    fireworksApiKey: z.string().optional(),
+    cohereApiKey: z.string().optional(),
   }).default({}),
   memory: z.object({
     enabled: z.boolean().default(true),
@@ -73,6 +82,10 @@ export const CortexConfigSchema = z.object({
       }).default({}),
     }).default({}),
     costBudget: z.number().default(0.50),
+  }).default({}),
+  embeddings: z.object({
+    provider: z.enum(['local', 'openai', 'cohere']).default('local'),
+    model: z.string().optional(),
   }).default({}),
 });
 

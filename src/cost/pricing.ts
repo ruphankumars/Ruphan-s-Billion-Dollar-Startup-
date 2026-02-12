@@ -75,6 +75,114 @@ export const MODEL_PRICING: ModelPricing[] = [
     contextWindow: 32000,
     tier: 'balanced',
   },
+
+  // Groq
+  {
+    model: 'llama-3.3-70b-versatile',
+    provider: 'groq',
+    inputPer1M: 0.59,
+    outputPer1M: 0.79,
+    contextWindow: 128000,
+    tier: 'powerful',
+  },
+  {
+    model: 'mixtral-8x7b-32768',
+    provider: 'groq',
+    inputPer1M: 0.24,
+    outputPer1M: 0.24,
+    contextWindow: 32768,
+    tier: 'fast',
+  },
+
+  // Mistral
+  {
+    model: 'mistral-large-latest',
+    provider: 'mistral',
+    inputPer1M: 2.0,
+    outputPer1M: 6.0,
+    contextWindow: 128000,
+    tier: 'powerful',
+  },
+  {
+    model: 'mistral-small-latest',
+    provider: 'mistral',
+    inputPer1M: 0.1,
+    outputPer1M: 0.3,
+    contextWindow: 128000,
+    tier: 'fast',
+  },
+
+  // Together
+  {
+    model: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo',
+    provider: 'together',
+    inputPer1M: 0.88,
+    outputPer1M: 0.88,
+    contextWindow: 128000,
+    tier: 'powerful',
+  },
+  {
+    model: 'mistralai/Mixtral-8x7B-Instruct-v0.1',
+    provider: 'together',
+    inputPer1M: 0.60,
+    outputPer1M: 0.60,
+    contextWindow: 32768,
+    tier: 'fast',
+  },
+
+  // DeepSeek
+  {
+    model: 'deepseek-chat',
+    provider: 'deepseek',
+    inputPer1M: 0.14,
+    outputPer1M: 0.28,
+    contextWindow: 128000,
+    tier: 'powerful',
+  },
+  {
+    model: 'deepseek-coder',
+    provider: 'deepseek',
+    inputPer1M: 0.14,
+    outputPer1M: 0.28,
+    contextWindow: 128000,
+    tier: 'fast',
+  },
+
+  // Fireworks
+  {
+    model: 'accounts/fireworks/models/llama-v3p1-70b-instruct',
+    provider: 'fireworks',
+    inputPer1M: 0.90,
+    outputPer1M: 0.90,
+    contextWindow: 128000,
+    tier: 'powerful',
+  },
+  {
+    model: 'accounts/fireworks/models/mixtral-8x7b-instruct',
+    provider: 'fireworks',
+    inputPer1M: 0.50,
+    outputPer1M: 0.50,
+    contextWindow: 32768,
+    tier: 'fast',
+  },
+
+  // Cohere
+  {
+    model: 'command-r-plus',
+    provider: 'cohere',
+    inputPer1M: 2.50,
+    outputPer1M: 10.0,
+    contextWindow: 128000,
+    tier: 'powerful',
+  },
+  {
+    model: 'command-r',
+    provider: 'cohere',
+    inputPer1M: 0.15,
+    outputPer1M: 0.60,
+    contextWindow: 128000,
+    tier: 'fast',
+  },
 ];
 
 /**
