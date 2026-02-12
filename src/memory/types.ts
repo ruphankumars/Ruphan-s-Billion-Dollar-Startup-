@@ -108,6 +108,8 @@ export interface VectorStore {
   updateMetadata?(id: string, updates: Record<string, unknown>): Promise<void>;
   /** Get all entries (optional — for consolidation) */
   getAll?(): Promise<Array<{ id: string; embedding: number[]; metadata: Record<string, unknown> }>>;
+  /** Get storage size in bytes (optional — for eviction) */
+  getStorageSize?(): Promise<number>;
 }
 
 export interface VectorSearchResult {

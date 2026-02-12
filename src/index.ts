@@ -28,6 +28,39 @@ export {
   QualityError,
   AgentError,
 } from './core/errors.js';
+export {
+  ChainableError,
+  ErrorAggregator,
+  type ErrorContext,
+  type SerializedError,
+} from './core/error-chain.js';
+export {
+  ConfigMigrator,
+  diffConfigs,
+  validateConfig,
+  type MigrationStep,
+  type ConfigDiff,
+  type ValidationDiagnostic,
+} from './core/config-migration.js';
+export {
+  AsyncMutex,
+  AsyncRWLock,
+  AsyncSemaphore,
+} from './core/mutex.js';
+export {
+  GracefulDegradation,
+  type DegradationReport,
+  type ComponentStatus,
+} from './core/graceful.js';
+export {
+  StreamController,
+  StreamBridge,
+  formatSSE,
+  createStreamPipeline,
+  type StreamEvent,
+  type StreamEventType,
+  type StreamCallback,
+} from './core/streaming.js';
 export type {
   CortexConfig,
   ExecutionResult,
@@ -96,6 +129,12 @@ export { GlobalMemoryPool } from './memory/global-pool.js';
 export { MemoryExtractor } from './memory/pipeline/extractor.js';
 export { WorkingMemory } from './memory/types/working.js';
 export { MemoryConsolidator, type ConsolidationResult, type ConsolidationOptions } from './memory/consolidation.js';
+export {
+  MemoryEvictor,
+  type EvictionConfig,
+  type EvictionPolicy,
+  type EvictionResult,
+} from './memory/eviction.js';
 export type {
   MemoryEntry,
   MemoryQuery,
@@ -152,6 +191,12 @@ export { MetricsCollector, type RunMetric, type AggregateMetrics, type StageMetr
 
 // Plugins
 export { PluginRegistry, type CortexPlugin, type PluginContext, type RoleTemplate } from './plugins/registry.js';
+export {
+  PluginSandbox,
+  type PluginCapability,
+  type PluginLimits,
+  type SandboxViolation,
+} from './plugins/sandbox.js';
 
 // Reasoning
 export { ReasoningOrchestrator } from './reasoning/orchestrator.js';

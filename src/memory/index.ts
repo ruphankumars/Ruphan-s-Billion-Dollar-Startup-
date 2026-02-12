@@ -2,6 +2,7 @@ export { CortexMemoryManager } from './manager.js';
 export { LocalEmbeddingEngine, cosineSimilarity } from './embeddings.js';
 export { SQLiteVectorStore } from './store/vector-sqlite.js';
 export { GlobalMemoryPool } from './global-pool.js';
+export { MemoryEvictor, type EvictionConfig, type EvictionPolicy, type EvictionResult } from './eviction.js';
 export { MemoryExtractor } from './pipeline/extractor.js';
 export { WorkingMemory } from './types/working.js';
 export { EpisodicMemoryBuilder } from './types/episodic.js';
