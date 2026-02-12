@@ -87,6 +87,10 @@ export const CortexConfigSchema = z.object({
     provider: z.enum(['local', 'openai', 'cohere']).default('local'),
     model: z.string().optional(),
   }).default({}),
+  dashboard: z.object({
+    port: z.number().default(3100),
+    autoOpen: z.boolean().default(true),
+  }).default({}),
 });
 
 export type CortexConfig = z.infer<typeof CortexConfigSchema> & {

@@ -46,12 +46,14 @@
     "pino": "^9.6.0",
     "pino-pretty": "^13.0.0",
     "simple-git": "^3.27.0",
+    "ws": "^8.16.0",
     "yaml": "^2.7.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12",
     "@types/diff": "^6.0.0",
+    "@types/ws": "^8.5.10",
     "@types/node": "^22.10.0",
     "tsup": "^8.3.0",
     "typescript": "^5.7.0",
@@ -82,5 +84,8 @@
     "type": "git",
     "url": "https://github.com/cortexos/cortexos"
   },
-  "homepage": "https://cortexos.dev"
+  "homepage": "https://cortexos.dev",
+  "workspaces": [
+    "packages/*"
+  ]
 }

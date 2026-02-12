@@ -12,6 +12,8 @@ import { createAgentsCommand } from './commands/agents.js';
 import { createStatusCommand } from './commands/status.js';
 import { createMemoryCommand } from './commands/memory.js';
 import { createBenchmarkCommand } from './commands/benchmark.js';
+import { createDashboardCommand } from './commands/dashboard.js';
+import { createSWEBenchCommand } from './commands/swebench.js';
 
 export function createCLI(): Command {
   const program = new Command();
@@ -36,6 +38,8 @@ export function createCLI(): Command {
   program.addCommand(createStatusCommand());
   program.addCommand(createMemoryCommand());
   program.addCommand(createBenchmarkCommand());
+  program.addCommand(createDashboardCommand());
+  program.addCommand(createSWEBenchCommand());
 
   // Default action: treat positional args as a prompt (like `cortexos "fix the auth bug"`)
   program

@@ -179,5 +179,19 @@ export type {
   BenchmarkSummary, BenchmarkCategoryResult, BenchmarkCategory, BenchmarkDifficulty,
 } from './benchmark/types.js';
 
+// Dashboard
+export { DashboardServer, type DashboardOptions } from './dashboard/server.js';
+export { createAPIHandler } from './dashboard/api.js';
+export { createWebSocketHandler } from './dashboard/websocket.js';
+
+// SWE-bench
+export { SWEBenchAdapter } from './swebench/adapter.js';
+export { SWEBenchPromptBuilder } from './swebench/prompt-builder.js';
+export { PatchExtractor } from './swebench/patch-extractor.js';
+export { SWEBenchEvaluator } from './swebench/evaluator.js';
+export type {
+  SWEBenchInstance, SWEBenchResult, SWEBenchReport, SWEBenchSummary, SWEBenchConfig,
+} from './swebench/types.js';
+
 // Version
 export { VERSION, NAME } from './version.js';

@@ -1,0 +1,104 @@
+{
+  "name": "vscode-cortexos",
+  "displayName": "CortexOS",
+  "description": "CortexOS — AI Agent Teams in VS Code. Run tasks, monitor pipelines, and manage providers.",
+  "version": "0.1.0",
+  "publisher": "cortexos",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Programming Languages", "Machine Learning", "Other"],
+  "keywords": ["ai", "agent", "multi-agent", "llm", "cortexos"],
+  "activationEvents": [
+    "onCommand:cortexos.run",
+    "workspaceContains:.cortexos.yaml"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "cortexos.run",
+        "title": "CortexOS: Run Task"
+      },
+      {
+        "command": "cortexos.chat",
+        "title": "CortexOS: Open Chat"
+      },
+      {
+        "command": "cortexos.selectProvider",
+        "title": "CortexOS: Select Provider"
+      },
+      {
+        "command": "cortexos.benchmark",
+        "title": "CortexOS: Run Benchmarks"
+      },
+      {
+        "command": "cortexos.showDashboard",
+        "title": "CortexOS: Show Dashboard"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "cortexos-sidebar",
+          "title": "CortexOS",
+          "icon": "$(hubot)"
+        }
+      ]
+    },
+    "views": {
+      "cortexos-sidebar": [
+        {
+          "id": "cortexos-agents",
+          "name": "Agents"
+        },
+        {
+          "id": "cortexos-memories",
+          "name": "Memories"
+        },
+        {
+          "id": "cortexos-traces",
+          "name": "Traces"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "CortexOS",
+      "properties": {
+        "cortexos.defaultProvider": {
+          "type": "string",
+          "default": "anthropic",
+          "enum": ["anthropic", "openai", "google", "ollama", "groq", "mistral", "together", "deepseek", "fireworks", "cohere"],
+          "description": "Default LLM provider"
+        },
+        "cortexos.budget": {
+          "type": "number",
+          "default": 1.0,
+          "description": "Maximum budget per run (in dollars)"
+        },
+        "cortexos.showStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show CortexOS status bar item"
+        },
+        "cortexos.dashboardPort": {
+          "type": "number",
+          "default": 3100,
+          "description": "Port for the observability dashboard"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w"
+  },
+  "dependencies": {
+    "cortexos": "file:../../"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.7.0"
+  }
+}

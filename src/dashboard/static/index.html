@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CortexOS Dashboard</title>
+<style>
+  :root {
+    --bg: #0d1117; --bg-card: #161b22; --border: #30363d;
+    --text: #c9d1d9; --text-dim: #8b949e; --text-bright: #f0f6fc;
+    --accent: #58a6ff; --success: #3fb950; --error: #f85149;
+    --warning: #d29922; --purple: #bc8cff;
+    --stage-idle: #30363d; --stage-running: #1f6feb;
+    --stage-done: #238636; --stage-error: #da3633;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.5; }
+
+  /* Header */
+  .header { padding: 1rem 2rem; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 1rem; }
+  .header h1 { font-size: 1.25rem; color: var(--text-bright); font-weight: 600; }
+  .header .badge { font-size: 0.75rem; padding: 2px 8px; border-radius: 12px;
+    background: var(--stage-idle); color: var(--text-dim); }
+  .header .badge.connected { background: var(--success); color: #fff; }
+  .header .stats { margin-left: auto; display: flex; gap: 1.5rem; font-size: 0.85rem; color: var(--text-dim); }
+  .header .stats span { color: var(--text-bright); font-weight: 500; }
+
+  /* Layout */
+  .container { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1.5rem 2rem; }
+  .full-width { grid-column: 1 / -1; }
+
+  /* Cards */
+  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; }
+  .card h2 { font-size: 0.875rem; color: var(--text-dim); text-transform: uppercase;
+    letter-spacing: 0.05em; margin-bottom: 0.75rem; font-weight: 500; }
+
+  /* Pipeline View */
+  .pipeline { display: flex; gap: 4px; align-items: center; }
+  .stage { flex: 1; padding: 0.5rem 0.25rem; text-align: center; border-radius: 6px;
+    background: var(--stage-idle); font-size: 0.7rem; font-weight: 500;
+    transition: background 0.3s, color 0.3s; color: var(--text-dim); }
+  .stage.running { background: var(--stage-running); color: #fff; animation: pulse 1.5s infinite; }
+  .stage.done { background: var(--stage-done); color: #fff; }
+  .stage.error { background: var(--stage-error); color: #fff; }
+  .stage-arrow { color: var(--text-dim); font-size: 0.7rem; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
+
+  /* Metrics Grid */
+  .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
+  .metric { text-align: center; }
+  .metric .value { font-size: 1.5rem; font-weight: 700; color: var(--text-bright); }
+  .metric .label { font-size: 0.75rem; color: var(--text-dim); }
+
+  /* Waterfall */
+  .waterfall { max-height: 300px; overflow-y: auto; }
+  .waterfall-row { display: flex; align-items: center; gap: 0.5rem; padding: 2px 0;
+    font-size: 0.75rem; border-bottom: 1px solid var(--border); }
+  .waterfall-name { width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .waterfall-bar-container { flex: 1; height: 16px; position: relative; background: var(--bg); border-radius: 3px; }
+  .waterfall-bar { position: absolute; height: 100%; border-radius: 3px; min-width: 2px; }
+  .waterfall-bar.pipeline { background: var(--accent); }
+  .waterfall-bar.stage { background: var(--success); }
+  .waterfall-bar.agent { background: var(--purple); }
+  .waterfall-bar.tool { background: var(--warning); }
+  .waterfall-bar.llm { background: #f97583; }
+  .waterfall-bar.memory { background: #56d364; }
+  .waterfall-bar.quality { background: #79c0ff; }
+  .waterfall-time { width: 60px; text-align: right; color: var(--text-dim); }
+
+  /* Activity Feed */
+  .feed { max-height: 300px; overflow-y: auto; }
+  .feed-item { padding: 0.4rem 0; border-bottom: 1px solid var(--border);
+    display: flex; gap: 0.5rem; align-items: baseline; font-size: 0.8rem; }
+  .feed-time { color: var(--text-dim); font-family: monospace; font-size: 0.7rem; width: 70px; }
+  .feed-event { padding: 1px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 500;
+    background: var(--border); color: var(--text); white-space: nowrap; }
+  .feed-event.start { background: #1f6feb33; color: var(--accent); }
+  .feed-event.complete { background: #23863633; color: var(--success); }
+  .feed-event.error { background: #da363333; color: var(--error); }
+  .feed-msg { color: var(--text-dim); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 2rem; color: var(--text-dim); font-style: italic; }
+
+  /* Chart canvas */
+  .chart-container { height: 200px; position: relative; }
+  .chart-container canvas { width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>CortexOS Dashboard</h1>
+  <div class="badge" id="conn-badge">Disconnected</div>
+  <div class="stats">
+    <div>Runs: <span id="stat-runs">0</span></div>
+    <div>Success: <span id="stat-success">0%</span></div>
+    <div>Cost: <span id="stat-cost">$0.00</span></div>
+    <div>Uptime: <span id="stat-uptime">0s</span></div>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Pipeline Stage View -->
+  <div class="card full-width">
+    <h2>Pipeline</h2>
+    <div class="pipeline" id="pipeline">
+      <div class="stage" data-stage="recall">RECALL</div><span class="stage-arrow">&rarr;</span>
+      <div class="stage" data-stage="enhance">ENHANCE</div><span class="stage-arrow">&rarr;</span>
+      <div class="stage" data-stage="analyze">ANALYZE</div><span class="stage-arrow">&rarr;</span>
+      <div class="stage" data-stage="decompose">DECOMPOSE</div><span class="stage-arrow">&rarr;</span>
+      <div class="stage" data-stage="plan">PLAN</div><span class="stage-arrow">&rarr;</span>
+      <div class="stage" data-stage="execute">EXECUTE</div><span class="stage-arrow">&rarr;</span>
+      <div class="stage" data-stage="verify">VERIFY</div><span class="stage-arrow">&rarr;</span>
+      <div class="stage" data-stage="memorize">MEMORIZE</div>
+    </div>
+  </div>
+
+  <!-- Metrics Cards -->
+  <div class="card full-width">
+    <h2>Metrics</h2>
+    <div class="metrics-grid">
+      <div class="metric"><div class="value" id="m-runs">0</div><div class="label">Total Runs</div></div>
+      <div class="metric"><div class="value" id="m-success">0%</div><div class="label">Success Rate</div></div>
+      <div class="metric"><div class="value" id="m-duration">0ms</div><div class="label">Avg Duration</div></div>
+      <div class="metric"><div class="value" id="m-cost">$0.00</div><div class="label">Total Cost</div></div>
+    </div>
+  </div>
+
+  <!-- Trace Waterfall -->
+  <div class="card">
+    <h2>Trace Waterfall</h2>
+    <div class="waterfall" id="waterfall">
+      <div class="empty">No traces yet. Run a task to see execution timeline.</div>
+    </div>
+  </div>
+
+  <!-- Agent Activity Feed -->
+  <div class="card">
+    <h2>Activity Feed</h2>
+    <div class="feed" id="feed">
+      <div class="empty">Waiting for events...</div>
+    </div>
+  </div>
+
+  <!-- Cost Chart -->
+  <div class="card">
+    <h2>Cost Over Time</h2>
+    <div class="chart-container">
+      <canvas id="cost-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- Quality Chart -->
+  <div class="card">
+    <h2>Quality Score</h2>
+    <div class="chart-container">
+      <canvas id="quality-chart"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const PORT = '__WS_PORT__';
+  const BASE = 'http://localhost:' + PORT;
+  let ws = null;
+  let reconnectTimer = null;
+  let reconnectDelay = 1000;
+  const feedItems = [];
+  const MAX_FEED = 100;
+
+  // DOM refs
+  const badge = document.getElementById('conn-badge');
+  const feed = document.getElementById('feed');
+  const waterfall = document.getElementById('waterfall');
+
+  // ===== WebSocket Connection =====
+  function connect() {
+    ws = new WebSocket('ws://localhost:' + PORT);
+
+    ws.onopen = function() {
+      badge.textContent = 'Connected';
+      badge.classList.add('connected');
+      reconnectDelay = 1000;
+      loadInitialData();
+    };
+
+    ws.onclose = function() {
+      badge.textContent = 'Disconnected';
+      badge.classList.remove('connected');
+      reconnectTimer = setTimeout(connect, reconnectDelay);
+      reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+    };
+
+    ws.onerror = function() { ws.close(); };
+
+    ws.onmessage = function(e) {
+      try {
+        const msg = JSON.parse(e.data);
+        handleEvent(msg.event, msg.data, msg.timestamp);
+      } catch(err) { /* ignore parse errors */ }
+    };
+  }
+
+  // ===== Event Handling =====
+  function handleEvent(event, data, ts) {
+    // Update pipeline stages
+    if (event === 'stage:start' && data && data.stage) {
+      setStage(data.stage, 'running');
+    } else if (event === 'stage:complete' && data && data.stage) {
+      setStage(data.stage, 'done');
+    } else if (event === 'engine:start') {
+      resetPipeline();
+    } else if (event === 'engine:complete') {
+      refreshMetrics();
+      refreshWaterfall();
+    } else if (event === 'engine:error') {
+      refreshMetrics();
+    }
+
+    // Add to feed
+    addFeedItem(event, data, ts);
+
+    // Update cost
+    if (event === 'cost:update' && data) {
+      document.getElementById('stat-cost').textContent = '$' + (data.totalCost || 0).toFixed(4);
+    }
+  }
+
+  function setStage(name, state) {
+    const stages = document.querySelectorAll('.stage');
+    for (const s of stages) {
+      if (s.dataset.stage === name.toLowerCase()) {
+        s.className = 'stage ' + state;
+      }
+    }
+  }
+
+  function resetPipeline() {
+    const stages = document.querySelectorAll('.stage');
+    for (const s of stages) { s.className = 'stage'; }
+  }
+
+  function addFeedItem(event, data, ts) {
+    const time = new Date(ts).toLocaleTimeString();
+    const type = event.includes('error') ? 'error' : event.includes('complete') ? 'complete' : 'start';
+    const msg = summarizeEvent(event, data);
+
+    feedItems.unshift({ time, event, type, msg });
+    if (feedItems.length > MAX_FEED) feedItems.length = MAX_FEED;
+    renderFeed();
+  }
+
+  function summarizeEvent(event, data) {
+    if (!data) return '';
+    if (typeof data === 'string') return data;
+    if (data.stage) return data.stage;
+    if (data.role) return data.role + (data.taskId ? ' (' + data.taskId + ')' : '');
+    if (data.message) return data.message;
+    if (data.tool) return data.tool;
+    return '';
+  }
+
+  function renderFeed() {
+    if (feedItems.length === 0) {
+      feed.innerHTML = '<div class="empty">Waiting for events...</div>';
+      return;
+    }
+    feed.innerHTML = feedItems.map(function(item) {
+      return '<div class="feed-item">' +
+        '<span class="feed-time">' + item.time + '</span>' +
+        '<span class="feed-event ' + item.type + '">' + item.event + '</span>' +
+        '<span class="feed-msg">' + escapeHtml(item.msg) + '</span>' +
+        '</div>';
+    }).join('');
+  }
+
+  // ===== API Data Loading =====
+  function loadInitialData() {
+    refreshMetrics();
+    refreshStatus();
+    refreshWaterfall();
+  }
+
+  function refreshMetrics() {
+    fetch(BASE + '/api/metrics').then(function(r) { return r.json(); }).then(function(m) {
+      document.getElementById('m-runs').textContent = m.totalRuns || 0;
+      document.getElementById('m-success').textContent = ((m.successRate || 0) * 100).toFixed(0) + '%';
+      document.getElementById('m-duration').textContent = formatMs(m.avgDuration || 0);
+      document.getElementById('m-cost').textContent = '$' + (m.totalCost || 0).toFixed(4);
+      document.getElementById('stat-runs').textContent = m.totalRuns || 0;
+      document.getElementById('stat-success').textContent = ((m.successRate || 0) * 100).toFixed(0) + '%';
+    }).catch(function() {});
+  }
+
+  function refreshStatus() {
+    fetch(BASE + '/api/status').then(function(r) { return r.json(); }).then(function(s) {
+      document.getElementById('stat-uptime').textContent = s.uptimeFormatted || '0s';
+      document.getElementById('stat-cost').textContent = '$' + (s.totalCost || 0).toFixed(4);
+    }).catch(function() {});
+  }
+
+  function refreshWaterfall() {
+    fetch(BASE + '/api/traces/timeline').then(function(r) { return r.json(); }).then(function(timeline) {
+      if (!timeline || timeline.length === 0) {
+        waterfall.innerHTML = '<div class="empty">No traces yet.</div>';
+        return;
+      }
+      var maxEnd = Math.max.apply(null, timeline.map(function(s) { return s.end; })) || 1;
+      waterfall.innerHTML = timeline.map(function(span) {
+        var left = (span.start / maxEnd * 100).toFixed(1);
+        var width = Math.max(((span.end - span.start) / maxEnd * 100), 0.5).toFixed(1);
+        var indent = '&nbsp;'.repeat(span.depth * 2);
+        return '<div class="waterfall-row">' +
+          '<span class="waterfall-name" title="' + escapeHtml(span.name) + '">' + indent + escapeHtml(span.name) + '</span>' +
+          '<div class="waterfall-bar-container">' +
+          '<div class="waterfall-bar ' + span.kind + '" style="left:' + left + '%;width:' + width + '%"></div>' +
+          '</div>' +
+          '<span class="waterfall-time">' + formatMs(span.duration) + '</span>' +
+          '</div>';
+      }).join('');
+    }).catch(function() {});
+  }
+
+  // ===== Chart Drawing =====
+  function drawChart(canvasId, data, color) {
+    var canvas = document.getElementById(canvasId);
+    if (!canvas || !data || data.length === 0) return;
+    var ctx = canvas.getContext('2d');
+    var w = canvas.width = canvas.parentElement.clientWidth;
+    var h = canvas.height = canvas.parentElement.clientHeight;
+
+    ctx.clearRect(0, 0, w, h);
+
+    var values = data.map(function(d) { return d.value; });
+    var max = Math.max.apply(null, values) || 1;
+    var step = w / Math.max(values.length - 1, 1);
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (var i = 0; i < values.length; i++) {
+      var x = i * step;
+      var y = h - (values[i] / max) * (h - 20) - 10;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Fill area
+    ctx.lineTo((values.length - 1) * step, h);
+    ctx.lineTo(0, h);
+    ctx.closePath();
+    ctx.fillStyle = color.replace(')', ', 0.1)').replace('rgb', 'rgba');
+    ctx.fill();
+  }
+
+  // Load time series for charts
+  function loadCharts() {
+    fetch(BASE + '/api/metrics/timeseries?field=cost').then(function(r) { return r.json(); }).then(function(d) {
+      drawChart('cost-chart', d, 'rgb(88, 166, 255)');
+    }).catch(function() {});
+
+    fetch(BASE + '/api/metrics/timeseries?field=quality').then(function(r) { return r.json(); }).then(function(d) {
+      drawChart('quality-chart', d, 'rgb(63, 185, 80)');
+    }).catch(function() {});
+  }
+
+  // ===== Utilities =====
+  function formatMs(ms) {
+    if (ms < 1000) return Math.round(ms) + 'ms';
+    if (ms < 60000) return (ms / 1000).toFixed(1) + 's';
+    return (ms / 60000).toFixed(1) + 'm';
+  }
+
+  function escapeHtml(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // ===== Init =====
+  connect();
+  setInterval(refreshStatus, 10000);
+  setInterval(loadCharts, 30000);
+  setTimeout(loadCharts, 2000);
+})();
+</script>
+</body>
+</html>
