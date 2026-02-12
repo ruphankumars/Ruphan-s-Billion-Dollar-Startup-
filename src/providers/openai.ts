@@ -95,13 +95,109 @@ export class OpenAIProvider extends BaseLLMProvider {
   }
 
   protected async *_stream(request: LLMRequest): AsyncIterable<LLMStreamChunk> {
-    const response = await this._complete(request);
-    if (response.content) {
-      yield { type: 'text', content: response.content };
+    const messages = request.messages.map(m => {
+      if (m.role === 'tool') {
+        return {
+          role: 'tool' as const,
+          tool_call_id: m.toolCallId || '',
+          content: m.content,
+        };
+      }
+      if (m.role === 'assistant' && m.toolCalls && m.toolCalls.length > 0) {
+        return {
+          role: 'assistant' as const,
+          content: m.content || null,
+          tool_calls: m.toolCalls.map(tc => ({
+            id: tc.id,
+            type: 'function' as const,
+            function: {
+              name: tc.name,
+              arguments: tc.arguments,
+            },
+          })),
+        };
+      }
+      return {
+        role: m.role as 'system' | 'user' | 'assistant',
+        content: m.content,
+      };
+    });
+
+    const tools = request.tools?.map(t => ({
+      type: 'function' as const,
+      function: {
+        name: t.name,
+        description: t.description,
+        parameters: t.parameters,
+      },
+    }));
+
+    const stream = await this.getClient().chat.completions.create({
+      model: request.model || this.defaultModel,
+      messages: messages as OpenAI.ChatCompletionMessageParam[],
+      max_tokens: request.maxTokens || 4096,
+      stream: true,
+      ...(tools && tools.length > 0 ? { tools } : {}),
+      ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
+    });
+
+    // Track tool calls being built incrementally
+    const pendingToolCalls = new Map<number, { id: string; name: string; arguments: string }>();
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+
+    for await (const chunk of stream) {
+      const choice = chunk.choices[0];
+      if (!choice) continue;
+
+      const delta = choice.delta;
+
+      // Text content
+      if (delta.content) {
+        yield { type: 'text', content: delta.content };
+      }
+
+      // Tool call deltas
+      if (delta.tool_calls) {
+        for (const tc of delta.tool_calls) {
+          const idx = tc.index;
+          let pending = pendingToolCalls.get(idx);
+
+          if (!pending) {
+            pending = { id: tc.id || '', name: '', arguments: '' };
+            pendingToolCalls.set(idx, pending);
+          }
+
+          if (tc.id) pending.id = tc.id;
+          if (tc.function?.name) pending.name += tc.function.name;
+          if (tc.function?.arguments) pending.arguments += tc.function.arguments;
+        }
+      }
+
+      // Track usage if provided
+      if (chunk.usage) {
+        totalInputTokens = chunk.usage.prompt_tokens || 0;
+        totalOutputTokens = chunk.usage.completion_tokens || 0;
+      }
+
+      // If finished, emit any complete tool calls
+      if (choice.finish_reason === 'tool_calls' || choice.finish_reason === 'stop') {
+        for (const [, tc] of pendingToolCalls) {
+          yield {
+            type: 'tool_call',
+            toolCall: { id: tc.id, name: tc.name, arguments: tc.arguments },
+          };
+        }
+      }
     }
-    for (const tc of response.toolCalls) {
-      yield { type: 'tool_call', toolCall: tc };
-    }
-    yield { type: 'done', usage: response.usage };
+
+    yield {
+      type: 'done',
+      usage: {
+        inputTokens: totalInputTokens,
+        outputTokens: totalOutputTokens,
+        totalTokens: totalInputTokens + totalOutputTokens,
+      },
+    };
   }
 }

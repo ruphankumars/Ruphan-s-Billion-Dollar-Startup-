@@ -4,6 +4,7 @@ import { LintGate } from './gates/lint.js';
 import { TypeCheckGate } from './gates/type-check.js';
 import { TestGate } from './gates/test.js';
 import { ReviewGate } from './gates/review.js';
+import { SecurityGate } from './gates/security.js';
 import { getLogger } from '../core/logger.js';
 import type { QualityReport } from '../core/types.js';
 import type { LLMProvider } from '../providers/types.js';
@@ -23,6 +24,7 @@ export class QualityVerifier {
       'type-check': new TypeCheckGate(),
       test: new TestGate(),
       review: new ReviewGate(provider),
+      security: new SecurityGate(),
     };
 
     // Enable only the requested gates

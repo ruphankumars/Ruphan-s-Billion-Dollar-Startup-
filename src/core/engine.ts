@@ -23,6 +23,10 @@ import { MemoryExtractor } from '../memory/pipeline/extractor.js';
 import type { MemoryRecallResult, MemoryConfig } from '../memory/types.js';
 
 import { Agent } from '../agents/agent.js';
+import { SwarmCoordinator } from '../agents/coordinator.js';
+import { AgentPool } from '../agents/pool.js';
+import { WorktreeManager } from '../agents/sandbox/worktree.js';
+import { MergeManager } from '../agents/sandbox/merger.js';
 import { getRole } from '../agents/roles/index.js';
 import type { AgentTask, AgentRole } from '../agents/types.js';
 
@@ -65,6 +69,8 @@ export class CortexEngine {
   private verifier: QualityVerifier;
   private memoryExtractor: MemoryExtractor;
   private repoMapper: RepoMapper;
+  private coordinator: SwarmCoordinator | null = null;
+  private pool: AgentPool | null = null;
   private initialized = false;
 
   constructor(options: EngineOptions) {
@@ -118,7 +124,52 @@ export class CortexEngine {
   private async ensureInitialized(): Promise<void> {
     if (this.initialized) return;
     this.providerRegistry = await ProviderRegistry.create(this.config);
+
+    // Initialize pool + coordinator if provider is available
+    const provider = this.getProviderFromRegistry();
+    if (provider) {
+      const tools = this.toolRegistry.list();
+      const maxParallel = this.config.agents?.maxParallel ?? 4;
+
+      this.pool = new AgentPool({
+        maxWorkers: maxParallel,
+        workerScript: 'dist/workers/worker.js',
+        useChildProcess: false,
+        provider,
+        tools,
+        toolContext: { workingDir: this.projectDir, executionId: 'engine' },
+      });
+
+      let worktreeManager: WorktreeManager | undefined;
+      let mergeManager: MergeManager | undefined;
+
+      if (this.config.agents?.worktreesEnabled !== false) {
+        worktreeManager = new WorktreeManager(this.projectDir);
+        if (worktreeManager.isAvailable()) {
+          mergeManager = new MergeManager(this.projectDir);
+        } else {
+          worktreeManager = undefined;
+        }
+      }
+
+      this.coordinator = new SwarmCoordinator({
+        provider,
+        tools,
+        toolContext: { workingDir: this.projectDir, executionId: 'engine' },
+        events: this.events,
+        maxParallel,
+        pool: this.pool,
+        worktreeManager,
+        mergeManager,
+      });
+    }
+
     this.initialized = true;
+  }
+
+  private getProviderFromRegistry(): LLMProvider | undefined {
+    if (!this.providerRegistry) return undefined;
+    try { return this.providerRegistry.getDefault(); } catch { return undefined; }
   }
 
   /**
@@ -305,6 +356,17 @@ export class CortexEngine {
     enhanced: EnhancedPrompt,
     context: ExecutionContext,
   ): Promise<AgentResult[]> {
+    // If coordinator is available, delegate wave execution to it
+    if (this.coordinator) {
+      try {
+        return await this.coordinator.executeWaves(tasks, waves);
+      } catch (error) {
+        logger.warn({ error }, 'Coordinator execution failed, falling back to inline execution');
+        // Fall through to inline execution
+      }
+    }
+
+    // Inline fallback: direct Promise.all per wave
     const allResults: AgentResult[] = [];
     const taskMap = new Map(tasks.map(t => [t.id, t]));
 
@@ -488,6 +550,9 @@ export class CortexEngine {
   }
 
   async shutdown(): Promise<void> {
+    if (this.pool) {
+      await this.pool.shutdown();
+    }
     if (this.memoryManager) {
       await this.memoryManager.close();
     }

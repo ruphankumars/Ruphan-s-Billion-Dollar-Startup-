@@ -103,15 +103,91 @@ export class AnthropicProvider extends BaseLLMProvider {
   }
 
   protected async *_stream(request: LLMRequest): AsyncIterable<LLMStreamChunk> {
-    // For MVP, use non-streaming and yield a single chunk
-    const response = await this._complete(request);
+    const systemMessage = request.messages.find(m => m.role === 'system');
+    const nonSystemMessages = request.messages.filter(m => m.role !== 'system');
 
-    if (response.content) {
-      yield { type: 'text', content: response.content };
+    const anthropicMessages = nonSystemMessages.map(m => {
+      if (m.role === 'tool') {
+        return {
+          role: 'user' as const,
+          content: [{
+            type: 'tool_result' as const,
+            tool_use_id: m.toolCallId || '',
+            content: m.content,
+          }],
+        };
+      }
+      if (m.role === 'assistant' && m.toolCalls && m.toolCalls.length > 0) {
+        const content: Array<Anthropic.TextBlock | Anthropic.ToolUseBlock> = [];
+        if (m.content) {
+          content.push({ type: 'text', text: m.content, citations: [] } as Anthropic.TextBlock);
+        }
+        for (const tc of m.toolCalls) {
+          content.push({
+            type: 'tool_use',
+            id: tc.id,
+            name: tc.name,
+            input: JSON.parse(tc.arguments),
+          } as Anthropic.ToolUseBlock);
+        }
+        return { role: 'assistant' as const, content };
+      }
+      return { role: m.role as 'user' | 'assistant', content: m.content };
+    });
+
+    const tools = request.tools?.map(t => ({
+      name: t.name,
+      description: t.description,
+      input_schema: t.parameters as Anthropic.Tool['input_schema'],
+    }));
+
+    const stream = this.client.messages.stream({
+      model: request.model || this.defaultModel,
+      max_tokens: request.maxTokens || 4096,
+      messages: anthropicMessages as Anthropic.MessageParam[],
+      ...(systemMessage ? { system: systemMessage.content } : {}),
+      ...(tools && tools.length > 0 ? { tools } : {}),
+      ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
+    });
+
+    let currentToolId = '';
+    let currentToolName = '';
+    let currentToolArgs = '';
+
+    for await (const event of stream) {
+      if (event.type === 'content_block_delta') {
+        const delta = event.delta as any;
+        if (delta.type === 'text_delta') {
+          yield { type: 'text', content: delta.text };
+        } else if (delta.type === 'input_json_delta') {
+          currentToolArgs += delta.partial_json || '';
+        }
+      } else if (event.type === 'content_block_start') {
+        const block = (event as any).content_block;
+        if (block?.type === 'tool_use') {
+          currentToolId = block.id;
+          currentToolName = block.name;
+          currentToolArgs = '';
+        }
+      } else if (event.type === 'content_block_stop') {
+        if (currentToolId) {
+          yield {
+            type: 'tool_call',
+            toolCall: { id: currentToolId, name: currentToolName, arguments: currentToolArgs },
+          };
+          currentToolId = '';
+        }
+      }
     }
-    for (const tc of response.toolCalls) {
-      yield { type: 'tool_call', toolCall: tc };
-    }
-    yield { type: 'done', usage: response.usage };
+
+    const finalMessage = await stream.finalMessage();
+    yield {
+      type: 'done',
+      usage: {
+        inputTokens: finalMessage.usage.input_tokens,
+        outputTokens: finalMessage.usage.output_tokens,
+        totalTokens: finalMessage.usage.input_tokens + finalMessage.usage.output_tokens,
+      },
+    };
   }
 }

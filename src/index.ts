@@ -61,6 +61,7 @@ export { BaseLLMProvider } from './providers/base.js';
 export { ProviderRegistry } from './providers/registry.js';
 export { AnthropicProvider } from './providers/anthropic.js';
 export { OpenAIProvider } from './providers/openai.js';
+export { MiddlewareProvider, type MiddlewareOptions } from './providers/middleware.js';
 export type {
   LLMProvider,
   LLMMessage,
@@ -83,6 +84,7 @@ export { LocalEmbeddingEngine, cosineSimilarity } from './memory/embeddings.js';
 export { SQLiteVectorStore } from './memory/store/vector-sqlite.js';
 export { MemoryExtractor } from './memory/pipeline/extractor.js';
 export { WorkingMemory } from './memory/types/working.js';
+export { MemoryConsolidator, type ConsolidationResult, type ConsolidationOptions } from './memory/consolidation.js';
 export type {
   MemoryEntry,
   MemoryQuery,
@@ -119,6 +121,7 @@ export { QualityVerifier } from './quality/verifier.js';
 export { TypeCheckGate } from './quality/gates/type-check.js';
 export { TestGate } from './quality/gates/test.js';
 export { ReviewGate } from './quality/gates/review.js';
+export { SecurityGate } from './quality/gates/security.js';
 export type { QualityGate, QualityContext, GateResult, GateIssue } from './quality/types.js';
 
 // Cost
