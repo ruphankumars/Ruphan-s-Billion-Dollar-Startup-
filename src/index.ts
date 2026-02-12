@@ -48,6 +48,8 @@ export { SwarmCoordinator, type CoordinatorOptions } from './agents/coordinator.
 export { AgentPool, type PoolOptions, type PoolStats } from './agents/pool.js';
 export { MessageBus, type AgentMessage, type MessageType } from './agents/message-bus.js';
 export { HandoffManager, type HandoffRequest } from './agents/handoff.js';
+export { HandoffExecutor, type HandoffExecutorOptions } from './agents/handoff-executor.js';
+export { IPCMessageBus, type IPCBusOptions, type IPCEnvelope } from './agents/ipc-bus.js';
 export { getRole, getAllRoles } from './agents/roles/index.js';
 export type { AgentRoleName, AgentTask, AgentConfig, AgentState, AgentRole } from './agents/types.js';
 
@@ -112,6 +114,7 @@ export type {
 // Code Intelligence
 export { RepoMapper, type RepoMapOptions, type RepoMapResult } from './code/mapper.js';
 export { CodeParser, type ParseResult } from './code/parser.js';
+export { ASTParser, type StructuralAnalysis, type FunctionInfo, type ClassInfo, type ComplexityMetrics, type CallEdge } from './code/ast-parser.js';
 export { extractSymbols, type CodeSymbol, type SymbolType } from './code/symbols.js';
 export { detectLanguage, detectProjectLanguages, LANGUAGES } from './code/languages.js';
 export { generateDiff, formatDiff, summarizeChanges, type FileDiff } from './code/differ.js';
@@ -130,6 +133,13 @@ export { BudgetManager } from './cost/budget.js';
 export { ModelRouter } from './cost/router.js';
 export { MODEL_PRICING, calculateModelCost } from './cost/pricing.js';
 export type { ModelPricing, CostEntry, CostSummary, BudgetConfig } from './cost/types.js';
+
+// Observability
+export { Tracer, type Span, type SpanKind, type SpanStatus, type TraceExport } from './observability/tracer.js';
+export { MetricsCollector, type RunMetric, type AggregateMetrics, type StageMetric, type AgentMetric } from './observability/metrics.js';
+
+// Plugins
+export { PluginRegistry, type CortexPlugin, type PluginContext, type RoleTemplate } from './plugins/registry.js';
 
 // Utils
 export { Timer, formatDuration, measure } from './utils/timer.js';

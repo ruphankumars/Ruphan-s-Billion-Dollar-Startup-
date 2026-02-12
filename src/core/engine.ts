@@ -43,6 +43,10 @@ import { ModelRouter } from '../cost/router.js';
 
 import { RepoMapper } from '../code/mapper.js';
 
+import { Tracer, type Span } from '../observability/tracer.js';
+import { MetricsCollector, type RunMetric } from '../observability/metrics.js';
+import { PluginRegistry } from '../plugins/registry.js';
+
 import { Timer } from '../utils/timer.js';
 
 const logger = getLogger();
@@ -71,6 +75,9 @@ export class CortexEngine {
   private repoMapper: RepoMapper;
   private coordinator: SwarmCoordinator | null = null;
   private pool: AgentPool | null = null;
+  private tracer: Tracer;
+  private metrics: MetricsCollector;
+  private pluginRegistry: PluginRegistry;
   private initialized = false;
 
   constructor(options: EngineOptions) {
@@ -100,6 +107,11 @@ export class CortexEngine {
     this.verifier = new QualityVerifier();
     this.memoryExtractor = new MemoryExtractor();
     this.repoMapper = new RepoMapper();
+
+    // Initialize observability
+    this.tracer = new Tracer();
+    this.metrics = new MetricsCollector();
+    this.pluginRegistry = new PluginRegistry(this.config as Record<string, unknown>);
 
     // Initialize memory (if enabled)
     if (this.config.memory?.enabled !== false) {
@@ -180,15 +192,21 @@ export class CortexEngine {
 
     const timer = new Timer();
     const context = new ExecutionContext(prompt, this.config);
+    const trace = this.tracer.startTrace('execute', { prompt: prompt.substring(0, 100) });
 
     this.events.emit('engine:start', { prompt, context: context.toJSON() });
     logger.info({ prompt: prompt.substring(0, 100) }, 'Engine execution started');
+
+    const stageSpans: Span[] = [];
 
     try {
       // Stage 1: RECALL
       context.setStage('recall');
       this.events.emit('stage:start', { stage: 'recall' });
+      const recallSpan = this.tracer.startSpan('recall', 'stage', trace.id);
       const memories = await this.stageRecall(prompt);
+      this.tracer.endSpan(recallSpan.id, 'success', { memoriesRecalled: memories.length });
+      stageSpans.push(recallSpan);
       this.events.emit('stage:complete', { stage: 'recall', result: { memories: memories.length } });
 
       // Stage 2: ANALYZE
@@ -276,6 +294,55 @@ export class CortexEngine {
       };
 
       context.setStage('complete');
+      this.tracer.endSpan(trace.id, executionResult.success ? 'success' : 'error', {
+        duration: elapsed,
+        totalCost: costSummary.totalCost,
+      });
+
+      // Record metrics
+      this.metrics.record({
+        runId: context.id,
+        timestamp: Date.now(),
+        duration: elapsed,
+        success: executionResult.success,
+        prompt: prompt.substring(0, 200),
+        stages: stageSpans.map(s => ({
+          name: s.name,
+          duration: s.duration || 0,
+          success: s.status === 'success',
+        })),
+        agents: results.map(r => ({
+          taskId: r.taskId,
+          role: 'developer',
+          duration: 0,
+          success: r.success,
+          tokensUsed: r.tokensUsed?.total || 0,
+          toolCalls: 0,
+          iterations: 0,
+        })),
+        cost: {
+          totalTokens: costSummary.totalTokens,
+          totalCost: costSummary.totalCost,
+          inputTokens: costSummary.totalInputTokens ?? 0,
+          outputTokens: costSummary.totalOutputTokens ?? 0,
+          modelBreakdown: costSummary.modelBreakdown.map((m: any) => ({
+            model: m.model,
+            tokens: m.inputTokens + m.outputTokens,
+            cost: m.cost,
+          })),
+        },
+        quality: {
+          passed: qualityReport.passed,
+          score: qualityReport.overallScore ?? 100,
+          gatesRun: qualityReport.results?.length ?? 0,
+          issuesFound: qualityReport.results?.reduce((sum: number, r: any) => sum + (r.issues?.length ?? 0), 0) ?? 0,
+        },
+        memory: {
+          recalled: memories.length,
+          stored: memoriesStored,
+        },
+      });
+
       this.events.emit('engine:complete', executionResult);
       logger.info({ duration: elapsed, cost: costSummary.totalCost }, 'Engine execution completed');
 
@@ -284,6 +351,7 @@ export class CortexEngine {
       const elapsed = timer.elapsed;
       const err = error instanceof Error ? error : new Error(String(error));
 
+      this.tracer.endSpan(trace.id, 'error', { error: err.message });
       logger.error({ error: err.message, duration: elapsed }, 'Engine execution failed');
       this.events.emit('engine:error', { error: err.message });
 
@@ -547,6 +615,18 @@ export class CortexEngine {
 
   getEventBus(): EventBus {
     return this.events;
+  }
+
+  getTracer(): Tracer {
+    return this.tracer;
+  }
+
+  getMetrics(): MetricsCollector {
+    return this.metrics;
+  }
+
+  getPluginRegistry(): PluginRegistry {
+    return this.pluginRegistry;
   }
 
   async shutdown(): Promise<void> {
