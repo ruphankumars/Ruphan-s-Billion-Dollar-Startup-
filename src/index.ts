@@ -141,6 +141,25 @@ export { MetricsCollector, type RunMetric, type AggregateMetrics, type StageMetr
 // Plugins
 export { PluginRegistry, type CortexPlugin, type PluginContext, type RoleTemplate } from './plugins/registry.js';
 
+// Reasoning
+export { ReasoningOrchestrator } from './reasoning/orchestrator.js';
+export { ReActAgent } from './reasoning/react/react-agent.js';
+export { ReflexionEngine } from './reasoning/reflexion/reflexion-engine.js';
+export { ReflexionMemory } from './reasoning/reflexion/reflexion-memory.js';
+export { ThoughtTree } from './reasoning/tot/thought-tree.js';
+export { ThoughtEvaluator } from './reasoning/tot/evaluator.js';
+export { DebateArena } from './reasoning/debate/debate-arena.js';
+export { JudgeAgent } from './reasoning/debate/judge.js';
+export { RAGProvider } from './reasoning/rag/rag-provider.js';
+export { FileIndexer } from './reasoning/rag/file-indexer.js';
+export { RAGSearchTool } from './reasoning/rag/rag-search-tool.js';
+export { ToolChainPlanner } from './reasoning/tools/tool-chain-planner.js';
+export { ToolComposer } from './reasoning/tools/tool-composer.js';
+export type {
+  ReasoningStrategy, ReasoningConfig,
+  ThoughtStep, ReasoningTrace, ReasoningResult,
+} from './reasoning/types.js';
+
 // Utils
 export { Timer, formatDuration, measure } from './utils/timer.js';
 export { retry, withTimeout } from './utils/retry.js';

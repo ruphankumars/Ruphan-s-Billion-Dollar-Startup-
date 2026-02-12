@@ -1,6 +1,7 @@
 export type AgentRoleName =
   | 'orchestrator' | 'researcher' | 'developer'
-  | 'architect' | 'tester' | 'validator' | 'ux-agent';
+  | 'architect' | 'tester' | 'validator' | 'ux-agent'
+  | 'debater' | 'judge';
 
 export interface AgentTask {
   id: string;

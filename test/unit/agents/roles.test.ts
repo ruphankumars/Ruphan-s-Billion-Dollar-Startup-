@@ -4,9 +4,9 @@ import type { AgentRole } from '../../../src/agents/types.js';
 
 describe('Agent Roles', () => {
   describe('getAllRoles', () => {
-    it('should return 7 roles', () => {
+    it('should return 9 roles', () => {
       const roles = getAllRoles();
-      expect(roles).toHaveLength(7);
+      expect(roles).toHaveLength(9);
     });
   });
 
@@ -72,7 +72,7 @@ describe('Agent Roles', () => {
       expect(uniqueNames.size).toBe(names.length);
     });
 
-    it('should include all 7 expected role names', () => {
+    it('should include all 9 expected role names', () => {
       const names = roles.map(r => r.name);
       expect(names).toContain('orchestrator');
       expect(names).toContain('researcher');
@@ -81,6 +81,22 @@ describe('Agent Roles', () => {
       expect(names).toContain('tester');
       expect(names).toContain('validator');
       expect(names).toContain('ux-agent');
+      expect(names).toContain('debater');
+      expect(names).toContain('judge');
+    });
+
+    it('debater should have balanced model and temp 0.6', () => {
+      const debater = getRole('debater');
+      expect(debater.name).toBe('debater');
+      expect(debater.defaultModel).toBe('balanced');
+      expect(debater.temperature).toBe(0.6);
+    });
+
+    it('judge should have powerful model and temp 0.3', () => {
+      const judge = getRole('judge');
+      expect(judge.name).toBe('judge');
+      expect(judge.defaultModel).toBe('powerful');
+      expect(judge.temperature).toBe(0.3);
     });
   });
 });

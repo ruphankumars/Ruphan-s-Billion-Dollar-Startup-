@@ -51,6 +51,8 @@ import { Tracer, type Span } from '../observability/tracer.js';
 import { MetricsCollector, type RunMetric } from '../observability/metrics.js';
 import { PluginRegistry } from '../plugins/registry.js';
 
+import { ReasoningOrchestrator } from '../reasoning/orchestrator.js';
+
 import { Timer } from '../utils/timer.js';
 
 const logger = getLogger();
@@ -85,6 +87,7 @@ export class CortexEngine {
   private tracer: Tracer;
   private metrics: MetricsCollector;
   private pluginRegistry: PluginRegistry;
+  private reasoningOrchestrator: ReasoningOrchestrator | null = null;
   private initialized = false;
 
   constructor(options: EngineOptions) {
@@ -234,6 +237,23 @@ export class CortexEngine {
       this.handoffExecutor.start();
     }
 
+    // Initialize reasoning orchestrator if enabled
+    if (this.config.reasoning?.enabled) {
+      this.reasoningOrchestrator = new ReasoningOrchestrator(
+        this.config.reasoning as any,
+      );
+
+      if (this.config.reasoning.strategies?.rag?.enabled !== false) {
+        await this.reasoningOrchestrator.initializeRAG(this.projectDir);
+      }
+
+      if (this.config.reasoning.strategies?.toolDiscovery?.enabled !== false) {
+        this.reasoningOrchestrator.initializeToolDiscovery(this.toolRegistry);
+      }
+
+      logger.info('CortexEngine: reasoning orchestrator initialized');
+    }
+
     this.initialized = true;
   }
 
@@ -295,7 +315,7 @@ export class CortexEngine {
       // Stage 6: EXECUTE
       context.setStage('execute');
       this.events.emit('stage:start', { stage: 'execute' });
-      const results = await this.stageExecute(plan.tasks, plan.waves, enhanced, context);
+      const results = await this.stageExecute(plan.tasks, plan.waves, enhanced, context, analysis);
       this.events.emit('stage:complete', { stage: 'execute', result: { agents: results.length } });
 
       // Stage 7: VERIFY
@@ -481,6 +501,7 @@ export class CortexEngine {
     waves: Array<{ waveNumber: number; taskIds: string[]; canParallelize: boolean }>,
     enhanced: EnhancedPrompt,
     context: ExecutionContext,
+    analysis?: PromptAnalysis,
   ): Promise<AgentResult[]> {
     // If coordinator is available, delegate wave execution to it
     if (this.coordinator) {
@@ -510,7 +531,7 @@ export class CortexEngine {
               error: 'Task not found in plan',
             });
           }
-          return this.executeTask(task, enhanced, context);
+          return this.executeTask(task, enhanced, context, analysis);
         }),
       );
 
@@ -525,6 +546,7 @@ export class CortexEngine {
     task: DecomposedTask,
     enhanced: EnhancedPrompt,
     context: ExecutionContext,
+    analysis?: PromptAnalysis,
   ): Promise<AgentResult> {
     try {
       this.events.emit('agent:start', { taskId: task.id, role: task.role });
@@ -551,7 +573,7 @@ export class CortexEngine {
         .map((name: string) => this.toolRegistry.get(name))
         .filter((t: any): t is any => !!t);
 
-      const agent = new Agent({
+      const agentOptions = {
         role: task.role as any,
         provider,
         tools,
@@ -561,7 +583,7 @@ export class CortexEngine {
         },
         maxIterations: this.config.agents?.maxIterations ?? 20,
         systemPrompt: enhanced.systemPrompt,
-      });
+      };
 
       const agentTask: AgentTask = {
         id: task.id,
@@ -572,7 +594,14 @@ export class CortexEngine {
         context: [enhanced.userPrompt, task.context].filter(Boolean).join('\n\n'),
       };
 
-      const result = await agent.execute(agentTask);
+      // Use reasoning orchestrator if available, otherwise plain Agent
+      let result: AgentResult;
+      if (this.reasoningOrchestrator && analysis) {
+        result = await this.reasoningOrchestrator.execute(agentOptions, agentTask, analysis);
+      } else {
+        const agent = new Agent(agentOptions);
+        result = await agent.execute(agentTask);
+      }
 
       if (result.tokensUsed) {
         this.costTracker.record({

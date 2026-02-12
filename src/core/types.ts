@@ -38,6 +38,42 @@ export const CortexConfigSchema = z.object({
     showMemory: z.boolean().default(true),
     showPlan: z.boolean().default(true),
   }).default({}),
+  reasoning: z.object({
+    enabled: z.boolean().default(false),
+    strategies: z.object({
+      react: z.object({
+        enabled: z.boolean().default(true),
+        maxThoughts: z.number().default(10),
+      }).default({}),
+      reflexion: z.object({
+        enabled: z.boolean().default(true),
+        maxRetries: z.number().default(2),
+        triggerOn: z.enum(['failure', 'low-quality', 'both']).default('failure'),
+      }).default({}),
+      treeOfThought: z.object({
+        enabled: z.boolean().default(true),
+        candidates: z.number().default(3),
+        complexityThreshold: z.number().default(0.6),
+      }).default({}),
+      debate: z.object({
+        enabled: z.boolean().default(false),
+        debaters: z.number().default(3),
+        rounds: z.number().default(2),
+        complexityThreshold: z.number().default(0.8),
+      }).default({}),
+      rag: z.object({
+        enabled: z.boolean().default(true),
+        maxChunks: z.number().default(10),
+        chunkSize: z.number().default(500),
+        minRelevance: z.number().default(0.3),
+      }).default({}),
+      toolDiscovery: z.object({
+        enabled: z.boolean().default(true),
+        maxChainLength: z.number().default(5),
+      }).default({}),
+    }).default({}),
+    costBudget: z.number().default(0.50),
+  }).default({}),
 });
 
 export type CortexConfig = z.infer<typeof CortexConfigSchema> & {
