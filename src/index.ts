@@ -266,5 +266,43 @@ export type {
   SWEBenchInstance, SWEBenchResult, SWEBenchReport, SWEBenchSummary, SWEBenchConfig,
 } from './swebench/types.js';
 
+// Structured Output
+export {
+  StructuredOutputParser,
+  PRESET_SCHEMAS,
+  type SchemaField,
+  type SchemaDefinition,
+  type OutputSchema,
+  type ParseResult as StructuredParseResult,
+  type ParseError,
+} from './core/structured-output.js';
+
+// Workflow DSL
+export {
+  WorkflowBuilder,
+  WorkflowEngine,
+  PRESET_WORKFLOWS,
+  type WorkflowStep,
+  type StepConfig,
+  type RetryPolicy,
+  type WorkflowDefinition,
+  type WorkflowState,
+  type StepResult,
+  type WorkflowCheckpoint,
+} from './core/workflow-dsl.js';
+
+// Session Management
+export {
+  SessionManager,
+  ConversationContextBuilder,
+  type ConversationMessage,
+  type MessageMetadata,
+  type ToolCallRecord,
+  type Session,
+  type SessionMetadata,
+  type SessionQuery,
+  type SessionStats,
+} from './core/session.js';
+
 // Version
 export { VERSION, NAME } from './version.js';
