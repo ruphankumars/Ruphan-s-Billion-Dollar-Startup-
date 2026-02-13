@@ -304,5 +304,96 @@ export {
   type SessionStats,
 } from './core/session.js';
 
+// Automation
+export {
+  AutomationEngine,
+  SkillRegistry,
+  PRESET_SKILLS,
+  CronScheduler,
+  WebhookServer,
+  EventTriggerManager,
+  parseCron,
+  matchesCron,
+  getNextMatch,
+  validateCron,
+  describeCron,
+} from './automation/index.js';
+export type {
+  Skill,
+  Schedule,
+  WebhookConfig,
+  EventTriggerConfig,
+  AutomationRunRecord,
+  TriggerSource,
+  AutomationConfig,
+} from './automation/index.js';
+export type { CronFields, CronValidation } from './automation/cron-parser.js';
+
+// Cloud
+export {
+  DockerManager,
+  EnvironmentRegistry,
+  PRESET_ENVIRONMENTS,
+  ContainerPool,
+} from './cloud/index.js';
+export type {
+  Environment,
+  ResourceLimits,
+  ContainerInfo,
+  ContainerStatus,
+  ResourceUsage,
+  CloudTask,
+  CloudTaskResult,
+  CloudTaskStatus,
+  RepoMount,
+  ContainerEvent,
+  ContainerEventType,
+  CloudConfig,
+} from './cloud/index.js';
+export type { ContainerPoolOptions } from './cloud/container-pool.js';
+
+// Collaboration
+export {
+  TeamManager,
+  SharedSessionManager,
+  CollaborationWSHandler,
+  ACCESS_PERMISSIONS,
+} from './collaboration/index.js';
+export { createCollaborationAPIHandler } from './collaboration/index.js';
+export type {
+  TeamConfig,
+  TeamMember,
+  TeamRole,
+  AccessLevel,
+  AccessPermission,
+  SharedSession,
+  SessionViewer,
+  SessionArtifact,
+  ArtifactType,
+  SteeringCommand,
+  SteeringType,
+  CollaborationEvent,
+  CollaborationConfig,
+} from './collaboration/index.js';
+
+// API Server
+export { APIServer } from './api/index.js';
+export { generateApiKey, createAuthMiddleware, createCorsMiddleware } from './api/index.js';
+export type {
+  RunTaskRequest,
+  RunTaskResponse,
+  TaskRecord,
+  APIServerConfig,
+} from './api/index.js';
+
+// Templates
+export { TemplateRegistry, BUILTIN_TEMPLATES } from './templates/registry.js';
+export type {
+  ProjectTemplate,
+  TemplateFile,
+  ScaffoldOptions,
+  ScaffoldResult,
+} from './templates/types.js';
+
 // Version
 export { VERSION, NAME } from './version.js';

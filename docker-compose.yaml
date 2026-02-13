@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  cortexos:
+    build: .
+    ports:
+      - "3100:3100"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ./:/workspace
+      - cortexos-data:/root/.cortexos
+    working_dir: /workspace
+    command: ["serve", "--port", "3100"]
+
+  dashboard:
+    build: .
+    ports:
+      - "3101:3100"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    volumes:
+      - ./:/workspace
+      - cortexos-data:/root/.cortexos
+    working_dir: /workspace
+    command: ["dashboard", "--port", "3100"]
+
+volumes:
+  cortexos-data:

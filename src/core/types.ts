@@ -280,5 +280,22 @@ export interface CortexEvents {
   'quality:autofix': unknown;
   'cost:update': unknown;
   'error': unknown;
+  // Cloud events
+  'container:created': unknown;
+  'container:started': unknown;
+  'container:completed': unknown;
+  'container:failed': unknown;
+  'container:timeout': unknown;
+  // Collaboration events
+  'session:shared': unknown;
+  'session:joined': unknown;
+  'session:left': unknown;
+  'session:steered': unknown;
+  'artifact:created': unknown;
+  // Automation events
+  'automation:skill:start': unknown;
+  'automation:skill:complete': unknown;
+  'automation:schedule:fired': unknown;
+  'automation:webhook:received': unknown;
   [key: string]: unknown;
 }
