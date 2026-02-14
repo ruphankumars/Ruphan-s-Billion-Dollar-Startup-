@@ -297,5 +297,118 @@ export interface CortexEvents {
   'automation:skill:complete': unknown;
   'automation:schedule:fired': unknown;
   'automation:webhook:received': unknown;
+  // MCP/A2A Protocol events (Phase I)
+  'mcp:server:connected': unknown;
+  'mcp:server:disconnected': unknown;
+  'mcp:server:error': unknown;
+  'mcp:tool:called': unknown;
+  'mcp:tool:result': unknown;
+  'a2a:task:received': unknown;
+  'a2a:task:completed': unknown;
+  'a2a:task:failed': unknown;
+  'a2a:agent:discovered': unknown;
+  'bridge:translation': unknown;
+  // Daemon/Ambient events (Phase II)
+  'daemon:started': unknown;
+  'daemon:stopped': unknown;
+  'daemon:file:changed': unknown;
+  'daemon:critic:complete': unknown;
+  'daemon:report:generated': unknown;
+  // Marketplace events (Phase III)
+  'marketplace:agent:registered': unknown;
+  'marketplace:agent:removed': unknown;
+  'marketplace:discovery:search': unknown;
+  'marketplace:transaction:started': unknown;
+  'marketplace:transaction:completed': unknown;
+  'marketplace:negotiation:started': unknown;
+  'marketplace:negotiation:completed': unknown;
+  // CADP Protocol events (Phase IV)
+  'cadp:agent:registered': unknown;
+  'cadp:agent:deregistered': unknown;
+  'cadp:lookup:hit': unknown;
+  'cadp:lookup:miss': unknown;
+  'cadp:peer:connected': unknown;
+  'cadp:peer:disconnected': unknown;
+  'cadp:peer:synced': unknown;
+  'cadp:route:updated': unknown;
+  // Runtime events (Phase V)
+  'runtime:wasm:loaded': unknown;
+  'runtime:wasm:executed': unknown;
+  'runtime:wasm:error': unknown;
+  'runtime:edge:connected': unknown;
+  'runtime:edge:disconnected': unknown;
+  'runtime:edge:deployed': unknown;
+  'runtime:embedding:computed': unknown;
+  'runtime:embedding:cached': unknown;
+  // Verification events (Phase VI)
+  'verify:spec:checked': unknown;
+  'verify:contract:violated': unknown;
+  'verify:invariant:broken': unknown;
+  // Time-Travel events (Phase VI)
+  'timetravel:recorded': unknown;
+  'timetravel:replayed': unknown;
+  'timetravel:diverged': unknown;
+  // Multi-Modal events (Phase VI)
+  'multimodal:image:analyzed': unknown;
+  'multimodal:diagram:parsed': unknown;
+  'multimodal:whiteboard:processed': unknown;
+  // Trust Chain events
+  'trust:peer:added': unknown;
+  'trust:peer:removed': unknown;
+  'trust:keys:rotated': unknown;
+  // Surface events (Phase VI)
+  'surface:started': unknown;
+  'surface:stopped': unknown;
+  'surface:error': unknown;
+  'surface:github:webhook': unknown;
+  'surface:github:pr:analyzed': unknown;
+  'surface:github:issue:triaged': unknown;
+  'surface:slack:command': unknown;
+  'surface:slack:event': unknown;
+  'surface:slack:interaction': unknown;
+  'surface:discord:command': unknown;
+  'surface:discord:interaction': unknown;
+  // MCP Server events
+  'mcp:server:started': unknown;
+  'mcp:server:stopped': unknown;
+  'mcp:server:request': unknown;
+  'mcp:server:tool:registered': unknown;
+  'mcp:server:resource:registered': unknown;
+  // Self-Improvement events
+  'selfimprove:cycle:started': unknown;
+  'selfimprove:cycle:completed': unknown;
+  'selfimprove:benchmark:run': unknown;
+  'selfimprove:prompt:optimized': unknown;
+  'selfimprove:strategy:updated': unknown;
+  // Commerce events
+  'commerce:contract:created': unknown;
+  'commerce:contract:fulfilled': unknown;
+  'commerce:contract:disputed': unknown;
+  'commerce:payment:completed': unknown;
+  'commerce:reputation:updated': unknown;
+  // Sovereign/Air-Gap events
+  'sovereign:started': unknown;
+  'sovereign:stopped': unknown;
+  'sovereign:model:loaded': unknown;
+  'sovereign:chat:complete': unknown;
+  'sovereign:embedding:complete': unknown;
+  'sovereign:tool:executed': unknown;
+  // Deploy Pipeline events
+  'deploy:started': unknown;
+  'deploy:completed': unknown;
+  'deploy:failed': unknown;
+  'deploy:rollback': unknown;
+  'deploy:verified': unknown;
+  // Voice-to-Code events
+  'voice:transcription:started': unknown;
+  'voice:transcription:completed': unknown;
+  'voice:command:parsed': unknown;
+  'voice:code:generated': unknown;
+  // Spatial Computing events
+  'spatial:session:started': unknown;
+  'spatial:session:stopped': unknown;
+  'spatial:gesture:recognized': unknown;
+  'spatial:node:created': unknown;
+  'spatial:node:connected': unknown;
   [key: string]: unknown;
 }

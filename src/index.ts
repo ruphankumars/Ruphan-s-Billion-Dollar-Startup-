@@ -395,5 +395,524 @@ export type {
   ScaffoldResult,
 } from './templates/types.js';
 
+// MCP / A2A Protocol (Phase I)
+export { MCPClient } from './mcp/mcp-client.js';
+export { A2AGateway, type A2AGatewayOptions } from './mcp/a2a-gateway.js';
+export { ProtocolBridge, type ProtocolBridgeOptions } from './mcp/protocol-bridge.js';
+export type {
+  MCPTransport,
+  MCPServerConfig,
+  MCPCapabilities,
+  MCPTool,
+  MCPResource,
+  MCPPrompt,
+  MCPConnectionState,
+  MCPServerInstance,
+  JSONRPCRequest,
+  JSONRPCResponse,
+  JSONRPCNotification,
+  AgentCard,
+  AgentCapability,
+  AgentSkill,
+  AgentAuth,
+  A2ATask,
+  A2ATaskStatus,
+  A2AMessage,
+  A2APart,
+  A2AArtifact,
+  A2APushNotification,
+  ProtocolBridgeConfig,
+  UnifiedCapability,
+  MCPConfig,
+  MCPEventType,
+} from './mcp/types.js';
+
+// Daemon / Ambient Engine (Phase II)
+export { CortexDaemon } from './daemon/daemon.js';
+export { FileWatcher } from './daemon/file-watcher.js';
+export { CriticAgent } from './daemon/critic-agent.js';
+export { ConfidenceScorer } from './daemon/confidence-scorer.js';
+export { SleepReportGenerator } from './daemon/sleep-report.js';
+export type {
+  DaemonConfig,
+  DaemonState,
+  FileEvent,
+  WatchRule,
+  CriticReport,
+  CriticIssue,
+  ConfidenceScore,
+  ConfidenceFactor,
+  SleepReport,
+  SleepReportSection,
+} from './daemon/types.js';
+
+// Marketplace / Agent Economy (Phase III)
+export { AgentMarketplace } from './marketplace/marketplace.js';
+export { AgentRegistry as MarketplaceRegistry } from './marketplace/agent-registry.js';
+export { AgentDiscovery } from './marketplace/discovery.js';
+export { PricingEngine } from './marketplace/pricing.js';
+export type {
+  AgentListing,
+  AgentAuthor,
+  AgentPricing,
+  AgentQualityMetrics,
+  AgentEndpoints,
+  DiscoveryQuery,
+  DiscoveryResult,
+  PricingNegotiation,
+  AgentTransaction,
+  MarketplaceConfig,
+  MarketplaceEventType,
+} from './marketplace/types.js';
+
+// CADP Protocol / Agent Internet (Phase IV)
+export { AgentDNS } from './protocol/agent-dns.js';
+export { FederationManager } from './protocol/federation.js';
+export { AgentRouter } from './protocol/routing.js';
+export {
+  CADPSpecification,
+  PROTOCOL_VERSION as CADP_PROTOCOL_VERSION,
+  MESSAGE_TYPES as CADP_MESSAGE_TYPES,
+  WIRE_FORMAT as CADP_WIRE_FORMAT,
+  DISCOVERY_PROTOCOL as CADP_DISCOVERY_PROTOCOL,
+  SECURITY as CADP_SECURITY,
+  MESSAGE_SCHEMAS as CADP_MESSAGE_SCHEMAS,
+} from './protocol/cadp-spec.js';
+export { TrustChain } from './protocol/trust-chain.js';
+export type {
+  TrustKeyPair,
+  TrustCertificate,
+  TrustedPeer,
+} from './protocol/trust-chain.js';
+export type {
+  AgentIdentity,
+  AgentDNSRecord,
+  AgentEndpoint,
+  FederationPeer,
+  FederationConfig,
+  RouteEntry,
+  RouteCondition,
+  RouteMetrics,
+  CADPMessage,
+  CADPMessageType,
+  CADPConfig,
+  CADPEventType,
+} from './protocol/types.js';
+
+// MCP Server Mode
+export {
+  MCPServer,
+  type MCPServerOptions,
+  type MCPToolHandler,
+  type MCPResourceHandler,
+  type MCPPromptHandler,
+  type MCPToolResult,
+  type MCPResourceContent,
+  type MCPPromptResult,
+  type MCPServerStats,
+} from './mcp/mcp-server.js';
+
+// Surface Adapters (GitHub, Slack, Discord)
+export { SurfaceManager } from './surfaces/surface-manager.js';
+export type { SurfaceManagerStats } from './surfaces/surface-manager.js';
+export { GitHubApp } from './surfaces/github/github-app.js';
+export { PRAnalyzer } from './surfaces/github/pr-analyzer.js';
+export type { PRAnalysis, PRIssue, PRSuggestion, PRMetrics, PRInput } from './surfaces/github/pr-analyzer.js';
+export { SlackBot } from './surfaces/slack/slack-bot.js';
+export { SlackBlocks } from './surfaces/slack/slack-blocks.js';
+export { DiscordBot } from './surfaces/discord/discord-bot.js';
+export type { DiscordCommandOption, DiscordCommandDefinition } from './surfaces/discord/discord-bot.js';
+export type {
+  SurfaceType,
+  Surface,
+  SurfaceStats,
+  SurfaceManagerConfig,
+  SurfaceConfig,
+  SurfaceEventType,
+  GitHubAppConfig,
+  GitHubWebhookPayload,
+  PRPayload,
+  IssuePayload,
+  IssueCommentPayload,
+  PushPayload,
+  GitHubAppStats,
+  SlackBotConfig,
+  SlackEvent,
+  SlackSlashCommand,
+  SlackInteraction,
+  SlackBlock,
+  SlackBotStats,
+  DiscordBotConfig,
+  DiscordInteraction,
+  DiscordBotStats,
+} from './surfaces/types.js';
+
+// Sovereign Runtime (Phase V)
+export { WASMSandbox } from './runtime/wasm-sandbox.js';
+export { EdgeAdapter } from './runtime/edge-adapter.js';
+export { NeuralEmbeddingEngine } from './runtime/neural-embeddings.js';
+export type {
+  WASMSandboxConfig,
+  WASMModule,
+  WASMInstance,
+  SandboxExecResult,
+  EdgeTarget,
+  EdgeCapability,
+  EdgeConstraints,
+  EdgeConnection,
+  EdgeDeployment,
+  EdgeDeploymentMetrics,
+  EmbeddingModel,
+  EmbeddingRequest,
+  EmbeddingResult,
+  VectorSearchResult,
+  RuntimeConfig,
+  RuntimeEventType,
+} from './runtime/types.js';
+
+// Formal Verification (Phase VI)
+export { SpecVerifier } from './verification/spec-verifier.js';
+export { ContractChecker } from './verification/contract-checker.js';
+export { InvariantMonitor } from './verification/invariant-monitor.js';
+export type {
+  SpecContract,
+  Condition,
+  VerificationResult,
+  ConditionResult,
+  InvariantViolation,
+  VerificationConfig,
+  VerificationStats,
+} from './verification/types.js';
+
+// Time-Travel Debugging (Phase VI)
+export { DecisionRecorder } from './time-travel/recorder.js';
+export { DecisionReplayer } from './time-travel/replayer.js';
+export { DivergenceAnalyzer } from './time-travel/diff-analyzer.js';
+export type {
+  DecisionRecord,
+  DecisionContext,
+  DecisionOutcome,
+  ReplayConfig,
+  ReplayResult,
+  Divergence,
+  TimeTravelConfig,
+  TimeTravelStats,
+} from './time-travel/types.js';
+
+// Multi-Modal Input (Phase VI)
+export { ImageAnalyzer } from './multimodal/image-analyzer.js';
+export { DiagramParser } from './multimodal/diagram-parser.js';
+export { WhiteboardBridge } from './multimodal/whiteboard-bridge.js';
+export type {
+  ImageAnalysis,
+  UIElement,
+  ExtractedCode,
+  DiagramAnalysis,
+  DiagramNode,
+  DiagramConnection,
+  WhiteboardTask,
+  MultiModalConfig,
+  MultiModalStats,
+} from './multimodal/types.js';
+
+// Self-Improvement Loop
+export { FeedbackLoop } from './self-improve/feedback-loop.js';
+export { RegressionDetector } from './self-improve/regression-detector.js';
+export { CapabilityExpander } from './self-improve/capability-expander.js';
+export type {
+  FeedbackRecord,
+  FeedbackMetrics,
+  RegressionAlert,
+  CapabilityGap,
+  SelfImproveConfig,
+  SelfImproveStats,
+} from './self-improve/types.js';
+
+// Agent-to-Agent Commerce
+export { NegotiationEngine } from './commerce/negotiation-engine.js';
+export { AuctionSystem } from './commerce/auction.js';
+export { CoalitionManager } from './commerce/coalition-manager.js';
+export type {
+  Bid,
+  Auction,
+  AuctionStatus,
+  NegotiationRound,
+  Negotiation,
+  NegotiationStatus,
+  Coalition,
+  CoalitionStatus,
+  CommerceConfig,
+  CommerceStats,
+} from './commerce/types.js';
+
+// Sovereign / Air-Gap Mode
+export { SovereignRuntime } from './sovereign/sovereign-runtime.js';
+export { LocalProvider } from './sovereign/local-provider.js';
+export { OfflineToolkit } from './sovereign/offline-tools.js';
+export type {
+  SovereignConfig,
+  SovereignStatus,
+  SovereignMode,
+  OfflineTool,
+  ToolResult as SovereignToolResult,
+  ToolCategory,
+  OllamaModel,
+  OllamaGenerateRequest,
+  OllamaGenerateResponse,
+  OllamaChatMessage,
+  OllamaChatRequest,
+  OllamaChatResponse,
+  OllamaEmbeddingResponse,
+} from './sovereign/types.js';
+
+// Deploy Pipeline
+export { Packager } from './deploy/packager.js';
+export { Deployer } from './deploy/deployer.js';
+export { DockerTarget } from './deploy/targets/docker-target.js';
+export { NpmTarget } from './deploy/targets/npm-target.js';
+export { EdgeTarget as EdgeDeployTarget } from './deploy/targets/edge-target.js';
+export type {
+  DeployConfig,
+  DeployTarget,
+  DeployTargetType,
+  DeployManifest,
+  DeployResult,
+  DeployStatus,
+  PackageBundle,
+} from './deploy/types.js';
+
+// Voice-to-Code
+export { VoiceEngine } from './voice/voice-engine.js';
+export { VoiceCommandParser } from './voice/voice-commands.js';
+export type {
+  VoiceConfig,
+  VoiceProvider,
+  VoiceCommand,
+  ParsedCommand,
+  CommandIntent,
+  VoiceStats,
+} from './voice/types.js';
+
+// Spatial Computing
+export { TopologyGraph } from './spatial/topology-graph.js';
+export { SceneSerializer } from './spatial/scene-serializer.js';
+export type {
+  SceneGraph,
+  SceneNode,
+  SceneNodeType,
+  SceneEdge,
+  SceneEdgeType,
+  Vec3,
+  CameraState,
+  SpatialConfig,
+  LayoutAlgorithm,
+} from './spatial/types.js';
+
+// Shared Memory Bus
+export { SharedMemoryBus } from './memory-bus/index.js';
+export type {
+  MemoryEntry as MemoryBusEntry,
+  MemoryChannel,
+  ChannelMessage,
+  StateProjection,
+  ConflictStrategy,
+  ConflictEvent,
+  ChangeType,
+  ChangeEvent,
+  MemoryBusConfig,
+  MemoryBusStats,
+} from './memory-bus/index.js';
+
+// Agent Lifecycle Management
+export { AgentLifecycleManager } from './lifecycle/index.js';
+export type {
+  AgentPhase,
+  AgentManifest,
+  DeployEnvironment,
+  AgentDeployment,
+  ResourceAllocation,
+  HealthCheck,
+  AgentPerformanceMetrics,
+  SLADefinition,
+  LifecycleConfig,
+  LifecycleStats,
+} from './lifecycle/index.js';
+
+// AI Guardrails Engine
+export { GuardrailsEngine } from './guardrails/index.js';
+export type {
+  PolicySeverity,
+  RuleType,
+  PolicyRule,
+  SafetyPolicy,
+  PolicyEvaluation,
+  PolicyViolation,
+  AuditAction,
+  AuditLogEntry,
+  ComplianceStandard,
+  ComplianceFinding,
+  ComplianceReport,
+  RateLimitRule,
+  GuardrailsConfig,
+  GuardrailsStats,
+} from './guardrails/index.js';
+
+// Graph-of-Agents Orchestrator
+export { GraphOrchestrator } from './agents/graph-orchestrator.js';
+export type {
+  AgentNode,
+  AgentEdge,
+  EdgeType,
+  GraphMessage,
+  SubsetSelection,
+  SelectionStrategy,
+  GraphTopology,
+  TopologyMetrics,
+  GraphOrchestratorConfig,
+  GraphOrchestratorStats,
+} from './agents/graph-types.js';
+
+// Production Observability (extended)
+export { DistributedTracer } from './observability/distributed-tracer.js';
+export { AlertManager } from './observability/alert-manager.js';
+export { TraceExporter } from './observability/trace-exporter.js';
+export type {
+  SpanContext,
+  DetailedSpan,
+  SpanKind as DetailedSpanKind,
+  SpanStatusDetail,
+  SpanEvent,
+  SpanLink,
+  TraceTree,
+  AlertRule,
+  AlertCondition,
+  Alert,
+  CostAttribution,
+  ExportFormat,
+  ExportConfig,
+  ObservabilityConfig,
+  ObservabilityStats,
+} from './observability/types.js';
+
+// Agent FinOps
+export { AgentFinOps } from './finops/index.js';
+export type {
+  ConsumptionRecord,
+  CostForecast,
+  ResourceTag,
+  TaggedCost,
+  RightsizingRecommendation,
+  BudgetLevel,
+  Budget as FinOpsBudget,
+  BudgetAlert,
+  FinOpsReport,
+  FinOpsConfig,
+  FinOpsStats,
+} from './finops/index.js';
+
+// ACP Protocol Adapter
+export { ACPAdapter } from './mcp/acp-adapter.js';
+export type {
+  ACPAgentInfo,
+  ACPMessage,
+  ACPResponse,
+  ACPDiscoveryResult,
+  ACPRoute,
+  ACPConfig,
+  ACPStats,
+} from './mcp/acp-types.js';
+
+// Knowledge Graph
+export { KnowledgeGraph } from './memory/knowledge-graph.js';
+export type {
+  Entity,
+  Relationship,
+  GraphPath,
+  GraphPattern,
+  InferenceRule,
+  KnowledgeGraphConfig,
+  KnowledgeGraphStats,
+} from './memory/knowledge-graph-types.js';
+
+// Proactive Agent Daemon
+export { ProactiveEngine } from './daemon/proactive-engine.js';
+export type {
+  ContextPattern,
+  PredictedNeed,
+  ProactiveRule,
+  ProactiveConfig,
+  ProactiveStats,
+} from './daemon/proactive-engine.js';
+
+// User Behavior Model / Personalization
+export { UserBehaviorModel } from './personalization/index.js';
+export type {
+  UserPreference,
+  BehaviorEvent,
+  UserProfile,
+  PersonalizationRule,
+  PersonalizationConfig,
+  PersonalizationStats,
+} from './personalization/index.js';
+
+// Cross-Device Session Sync
+export { SessionSync } from './sync/index.js';
+export type {
+  SyncSession,
+  SyncMessage,
+  SyncConflict,
+  DeviceInfo,
+  SyncConfig,
+  SyncStats,
+} from './sync/index.js';
+
+// Semantic Scheduler
+export { SemanticScheduler } from './scheduler/index.js';
+export type {
+  SemanticTask,
+  TaskSemanticType,
+  ResourceSlot,
+  ResourceProfile,
+  SchedulerQueue,
+  SchedulerConfig,
+  SchedulerStats,
+} from './scheduler/index.js';
+
+// Digital Agent Identity
+export { IdentityManager } from './identity/index.js';
+export type {
+  AgentIdentity as DigitalAgentIdentity,
+  IdentityToken,
+  ActionLog,
+  TrustLevel,
+  IdentityVerification,
+  IdentityConfig,
+  IdentityStats,
+} from './identity/index.js';
+
+// GPU Resource Manager
+export { GPUManager } from './gpu/index.js';
+export type {
+  GPUDevice,
+  GPUAllocation,
+  InferenceBatch,
+  InferenceRequest,
+  GPUConfig,
+  GPUStats,
+} from './gpu/index.js';
+
+// Agent Workforce Planner
+export { WorkforcePlanner } from './workforce/index.js';
+export type {
+  WorkforceEntity,
+  AvailabilityWindow,
+  WorkforcePlan,
+  TaskAssignment,
+  SkillGap,
+  CapacityForecast,
+  WorkforceConfig,
+  WorkforceStats,
+} from './workforce/index.js';
+
 // Version
 export { VERSION, NAME } from './version.js';

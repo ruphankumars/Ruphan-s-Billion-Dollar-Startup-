@@ -87,6 +87,64 @@
   /* Chart canvas */
   .chart-container { height: 200px; position: relative; }
   .chart-container canvas { width: 100%; height: 100%; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); padding: 0 2rem; }
+  .tab { padding: 0.75rem 1.25rem; cursor: pointer; font-size: 0.85rem;
+    color: var(--text-dim); border-bottom: 2px solid transparent; transition: all 0.2s; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Agent Topology Graph */
+  .topology-canvas { height: 300px; background: var(--bg); border-radius: 6px; position: relative; }
+  .topology-canvas canvas { width: 100%; height: 100%; }
+  .topology-legend { display: flex; gap: 1rem; margin-top: 0.5rem; font-size: 0.75rem; }
+  .legend-item { display: flex; align-items: center; gap: 4px; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* Memory Explorer */
+  .memory-list { max-height: 300px; overflow-y: auto; }
+  .memory-item { padding: 0.5rem; border-bottom: 1px solid var(--border);
+    display: flex; gap: 0.75rem; align-items: flex-start; font-size: 0.8rem; }
+  .memory-type { padding: 1px 6px; border-radius: 4px; font-size: 0.65rem;
+    font-weight: 600; text-transform: uppercase; white-space: nowrap; }
+  .memory-type.semantic { background: #1f6feb33; color: var(--accent); }
+  .memory-type.episodic { background: #23863633; color: var(--success); }
+  .memory-type.working { background: #d2992233; color: var(--warning); }
+  .memory-content { flex: 1; color: var(--text-dim); overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap; }
+  .memory-score { font-family: monospace; font-size: 0.75rem; color: var(--text-dim); }
+
+  /* Surface Status */
+  .surface-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.75rem; }
+  .surface-card { padding: 0.75rem; background: var(--bg); border-radius: 6px; border: 1px solid var(--border); }
+  .surface-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+  .surface-icon { font-size: 1.25rem; }
+  .surface-name { font-weight: 600; font-size: 0.85rem; color: var(--text-bright); }
+  .surface-status { font-size: 0.7rem; padding: 1px 6px; border-radius: 8px; margin-left: auto; }
+  .surface-status.online { background: #23863633; color: var(--success); }
+  .surface-status.offline { background: #da363333; color: var(--error); }
+  .surface-stat { font-size: 0.75rem; color: var(--text-dim); }
+
+  /* Marketplace Grid */
+  .marketplace-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
+  .agent-card { padding: 1rem; background: var(--bg); border-radius: 8px; border: 1px solid var(--border);
+    transition: border-color 0.2s; cursor: pointer; }
+  .agent-card:hover { border-color: var(--accent); }
+  .agent-card-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+  .agent-avatar { width: 32px; height: 32px; border-radius: 8px; background: var(--border);
+    display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 700; }
+  .agent-name { font-weight: 600; color: var(--text-bright); font-size: 0.9rem; }
+  .agent-version { font-size: 0.7rem; color: var(--text-dim); }
+  .agent-desc { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 0.5rem;
+    overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .agent-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 0.5rem; }
+  .agent-tag { font-size: 0.65rem; padding: 1px 6px; border-radius: 8px; background: var(--border); color: var(--text-dim); }
+  .agent-footer { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-dim); }
+  .agent-rating { color: var(--warning); }
+  .agent-price { color: var(--success); font-weight: 500; }
 </style>
 </head>
 <body>
@@ -102,6 +160,17 @@
   </div>
 </div>
 
+<!-- Tab Navigation -->
+<div class="tabs">
+  <div class="tab active" data-tab="overview">Overview</div>
+  <div class="tab" data-tab="topology">Agent Topology</div>
+  <div class="tab" data-tab="memory">Memory Explorer</div>
+  <div class="tab" data-tab="surfaces">Surfaces</div>
+  <div class="tab" data-tab="marketplace">Marketplace</div>
+</div>
+
+<!-- Tab: Overview -->
+<div class="tab-content active" id="tab-overview">
 <div class="container">
   <!-- Pipeline Stage View -->
   <div class="card full-width">
@@ -160,6 +229,209 @@
       <canvas id="quality-chart"></canvas>
     </div>
   </div>
+</div>
+</div><!-- /tab-overview -->
+
+<!-- Tab: Agent Topology -->
+<div class="tab-content" id="tab-topology">
+<div class="container">
+  <div class="card full-width">
+    <h2>Agent Topology Graph</h2>
+    <div class="topology-canvas">
+      <canvas id="topology-graph"></canvas>
+    </div>
+    <div class="topology-legend">
+      <div class="legend-item"><span class="legend-dot" style="background:var(--accent)"></span> Orchestrator</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--success)"></span> Worker Agent</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--purple)"></span> Specialist</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--warning)"></span> QA Agent</div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Agent Status</h2>
+    <div class="feed" id="agent-status-list">
+      <div class="empty">No agents active</div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Communication Log</h2>
+    <div class="feed" id="agent-comm-log">
+      <div class="empty">No inter-agent messages</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Tab: Memory Explorer -->
+<div class="tab-content" id="tab-memory">
+<div class="container">
+  <div class="card full-width">
+    <h2>Memory Explorer</h2>
+    <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;">
+      <input id="memory-search" type="text" placeholder="Search memories..."
+        style="flex:1;padding:0.4rem 0.75rem;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.85rem;outline:none;">
+      <select id="memory-filter" style="padding:0.4rem;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.85rem;">
+        <option value="all">All Types</option>
+        <option value="semantic">Semantic</option>
+        <option value="episodic">Episodic</option>
+        <option value="working">Working</option>
+      </select>
+    </div>
+    <div class="memory-list" id="memory-list">
+      <div class="empty">No memories stored yet</div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Memory Statistics</h2>
+    <div class="metrics-grid">
+      <div class="metric"><div class="value" id="mem-total">0</div><div class="label">Total Memories</div></div>
+      <div class="metric"><div class="value" id="mem-semantic">0</div><div class="label">Semantic</div></div>
+      <div class="metric"><div class="value" id="mem-episodic">0</div><div class="label">Episodic</div></div>
+      <div class="metric"><div class="value" id="mem-working">0</div><div class="label">Working</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Recent Recall</h2>
+    <div class="feed" id="recall-log">
+      <div class="empty">No recent recalls</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Tab: Surfaces -->
+<div class="tab-content" id="tab-surfaces">
+<div class="container">
+  <div class="card full-width">
+    <h2>Active Surfaces</h2>
+    <div class="surface-grid" id="surface-grid">
+      <div class="surface-card">
+        <div class="surface-header">
+          <span class="surface-icon">GH</span>
+          <span class="surface-name">GitHub</span>
+          <span class="surface-status offline">offline</span>
+        </div>
+        <div class="surface-stat">PRs reviewed: 0 | Issues triaged: 0</div>
+      </div>
+      <div class="surface-card">
+        <div class="surface-header">
+          <span class="surface-icon">SL</span>
+          <span class="surface-name">Slack</span>
+          <span class="surface-status offline">offline</span>
+        </div>
+        <div class="surface-stat">Commands: 0 | Threads: 0</div>
+      </div>
+      <div class="surface-card">
+        <div class="surface-header">
+          <span class="surface-icon">DC</span>
+          <span class="surface-name">Discord</span>
+          <span class="surface-status offline">offline</span>
+        </div>
+        <div class="surface-stat">Commands: 0 | Interactions: 0</div>
+      </div>
+      <div class="surface-card">
+        <div class="surface-header">
+          <span class="surface-icon">MCP</span>
+          <span class="surface-name">MCP Server</span>
+          <span class="surface-status offline">offline</span>
+        </div>
+        <div class="surface-stat">Tools exposed: 0 | Calls: 0</div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Surface Events</h2>
+    <div class="feed" id="surface-feed">
+      <div class="empty">No surface events</div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Surface Metrics</h2>
+    <div class="metrics-grid">
+      <div class="metric"><div class="value" id="sf-active">0</div><div class="label">Active</div></div>
+      <div class="metric"><div class="value" id="sf-events">0</div><div class="label">Events Today</div></div>
+      <div class="metric"><div class="value" id="sf-errors">0</div><div class="label">Errors</div></div>
+      <div class="metric"><div class="value" id="sf-uptime">0%</div><div class="label">Uptime</div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Tab: Marketplace -->
+<div class="tab-content" id="tab-marketplace">
+<div class="container">
+  <div class="card full-width">
+    <h2>Agent Marketplace</h2>
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
+      <input id="marketplace-search" type="text" placeholder="Search agents..."
+        style="flex:1;padding:0.4rem 0.75rem;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.85rem;outline:none;">
+      <select id="marketplace-category" style="padding:0.4rem;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.85rem;">
+        <option value="all">All Categories</option>
+        <option value="code">Code</option>
+        <option value="test">Testing</option>
+        <option value="devops">DevOps</option>
+        <option value="data">Data</option>
+        <option value="security">Security</option>
+      </select>
+    </div>
+    <div class="marketplace-grid" id="marketplace-grid">
+      <div class="agent-card">
+        <div class="agent-card-header">
+          <div class="agent-avatar" style="background:#1f6feb33;color:var(--accent)">CR</div>
+          <div><div class="agent-name">Code Reviewer</div><div class="agent-version">v1.2.0</div></div>
+        </div>
+        <div class="agent-desc">Automated code review with quality scoring, style checks, and security analysis.</div>
+        <div class="agent-tags"><span class="agent-tag">code</span><span class="agent-tag">review</span><span class="agent-tag">quality</span></div>
+        <div class="agent-footer"><span class="agent-rating">4.8/5</span><span class="agent-price">Free</span></div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-card-header">
+          <div class="agent-avatar" style="background:#23863633;color:var(--success)">TG</div>
+          <div><div class="agent-name">Test Generator</div><div class="agent-version">v2.0.1</div></div>
+        </div>
+        <div class="agent-desc">Generates unit tests, integration tests, and E2E test suites from source code.</div>
+        <div class="agent-tags"><span class="agent-tag">test</span><span class="agent-tag">generation</span><span class="agent-tag">coverage</span></div>
+        <div class="agent-footer"><span class="agent-rating">4.6/5</span><span class="agent-price">Free</span></div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-card-header">
+          <div class="agent-avatar" style="background:#d2992233;color:var(--warning)">DP</div>
+          <div><div class="agent-name">Deploy Pipeline</div><div class="agent-version">v1.0.0</div></div>
+        </div>
+        <div class="agent-desc">One-click deployment to Cloudflare, AWS Lambda, Deno Deploy, and Docker.</div>
+        <div class="agent-tags"><span class="agent-tag">devops</span><span class="agent-tag">deploy</span><span class="agent-tag">cloud</span></div>
+        <div class="agent-footer"><span class="agent-rating">4.5/5</span><span class="agent-price">$0.02/run</span></div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-card-header">
+          <div class="agent-avatar" style="background:#bc8cff33;color:var(--purple)">SA</div>
+          <div><div class="agent-name">Security Auditor</div><div class="agent-version">v1.1.0</div></div>
+        </div>
+        <div class="agent-desc">Scans for OWASP Top 10, dependency vulnerabilities, and secret leaks.</div>
+        <div class="agent-tags"><span class="agent-tag">security</span><span class="agent-tag">audit</span><span class="agent-tag">owasp</span></div>
+        <div class="agent-footer"><span class="agent-rating">4.9/5</span><span class="agent-price">$0.05/run</span></div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-card-header">
+          <div class="agent-avatar" style="background:#f8514933;color:var(--error)">DB</div>
+          <div><div class="agent-name">Debug Detective</div><div class="agent-version">v1.3.0</div></div>
+        </div>
+        <div class="agent-desc">Time-travel debugging, root cause analysis, and automated fix suggestions.</div>
+        <div class="agent-tags"><span class="agent-tag">debug</span><span class="agent-tag">analysis</span><span class="agent-tag">fix</span></div>
+        <div class="agent-footer"><span class="agent-rating">4.7/5</span><span class="agent-price">Free</span></div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-card-header">
+          <div class="agent-avatar" style="background:#3fb95033;color:var(--success)">DW</div>
+          <div><div class="agent-name">Doc Writer</div><div class="agent-version">v2.1.0</div></div>
+        </div>
+        <div class="agent-desc">Generates API docs, READMEs, changelogs, and architecture diagrams.</div>
+        <div class="agent-tags"><span class="agent-tag">docs</span><span class="agent-tag">api</span><span class="agent-tag">readme</span></div>
+        <div class="agent-footer"><span class="agent-rating">4.4/5</span><span class="agent-price">Free</span></div>
+      </div>
+    </div>
+  </div>
+</div>
 </div>
 
 <script>
@@ -380,11 +652,261 @@
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  // ===== Tab Navigation =====
+  document.querySelectorAll('.tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+      document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+      tab.classList.add('active');
+      var target = document.getElementById('tab-' + tab.dataset.tab);
+      if (target) target.classList.add('active');
+      // Trigger tab-specific loads
+      if (tab.dataset.tab === 'topology') drawTopology();
+      if (tab.dataset.tab === 'memory') loadMemories();
+      if (tab.dataset.tab === 'surfaces') loadSurfaces();
+      if (tab.dataset.tab === 'marketplace') loadMarketplace();
+    });
+  });
+
+  // ===== Agent Topology Graph =====
+  var topologyNodes = [];
+  var topologyEdges = [];
+
+  function drawTopology() {
+    var canvas = document.getElementById('topology-graph');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var container = canvas.parentElement;
+    var w = canvas.width = container.clientWidth;
+    var h = canvas.height = container.clientHeight;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Demo topology if no live data
+    if (topologyNodes.length === 0) {
+      topologyNodes = [
+        { id: 'orch', label: 'Orchestrator', x: w/2, y: 60, type: 'orchestrator', vx: 0, vy: 0 },
+        { id: 'planner', label: 'Planner', x: w/3, y: 150, type: 'worker', vx: 0, vy: 0 },
+        { id: 'coder', label: 'Coder', x: w*2/3, y: 150, type: 'worker', vx: 0, vy: 0 },
+        { id: 'reviewer', label: 'Reviewer', x: w/4, y: 240, type: 'specialist', vx: 0, vy: 0 },
+        { id: 'tester', label: 'Tester', x: w/2, y: 240, type: 'specialist', vx: 0, vy: 0 },
+        { id: 'qa', label: 'QA Gate', x: w*3/4, y: 240, type: 'qa', vx: 0, vy: 0 },
+      ];
+      topologyEdges = [
+        { from: 'orch', to: 'planner' }, { from: 'orch', to: 'coder' },
+        { from: 'planner', to: 'coder' }, { from: 'coder', to: 'reviewer' },
+        { from: 'coder', to: 'tester' }, { from: 'tester', to: 'qa' },
+        { from: 'reviewer', to: 'qa' },
+      ];
+    }
+
+    var nodeMap = {};
+    topologyNodes.forEach(function(n) { nodeMap[n.id] = n; });
+
+    var colors = {
+      orchestrator: 'var(--accent)', worker: 'var(--success)',
+      specialist: 'var(--purple)', qa: 'var(--warning)'
+    };
+    var colorHex = {
+      orchestrator: '#58a6ff', worker: '#3fb950',
+      specialist: '#bc8cff', qa: '#d29922'
+    };
+
+    // Draw edges
+    ctx.strokeStyle = '#30363d';
+    ctx.lineWidth = 1.5;
+    topologyEdges.forEach(function(e) {
+      var from = nodeMap[e.from], to = nodeMap[e.to];
+      if (!from || !to) return;
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.stroke();
+      // Arrow
+      var angle = Math.atan2(to.y - from.y, to.x - from.x);
+      var ax = to.x - 18 * Math.cos(angle), ay = to.y - 18 * Math.sin(angle);
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(ax - 8*Math.cos(angle-0.4), ay - 8*Math.sin(angle-0.4));
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(ax - 8*Math.cos(angle+0.4), ay - 8*Math.sin(angle+0.4));
+      ctx.stroke();
+    });
+
+    // Draw nodes
+    topologyNodes.forEach(function(n) {
+      var c = colorHex[n.type] || '#58a6ff';
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, 14, 0, Math.PI * 2);
+      ctx.fillStyle = c + '33';
+      ctx.fill();
+      ctx.strokeStyle = c;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // Label
+      ctx.fillStyle = '#c9d1d9';
+      ctx.font = '11px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(n.label, n.x, n.y + 28);
+    });
+  }
+
+  // ===== Memory Explorer =====
+  function loadMemories() {
+    fetch(BASE + '/api/memory/recent').then(function(r) { return r.json(); }).then(function(memories) {
+      var list = document.getElementById('memory-list');
+      if (!memories || memories.length === 0) {
+        list.innerHTML = '<div class="empty">No memories stored yet</div>';
+        return;
+      }
+      list.innerHTML = memories.map(function(m) {
+        return '<div class="memory-item">' +
+          '<span class="memory-type ' + (m.type || 'semantic') + '">' + (m.type || 'semantic') + '</span>' +
+          '<span class="memory-content" title="' + escapeHtml(m.content || m.text || '') + '">' + escapeHtml(m.content || m.text || '') + '</span>' +
+          '<span class="memory-score">' + ((m.relevance || m.score || 0) * 100).toFixed(0) + '%</span>' +
+          '</div>';
+      }).join('');
+    }).catch(function() {});
+
+    // Stats
+    fetch(BASE + '/api/memory/stats').then(function(r) { return r.json(); }).then(function(s) {
+      document.getElementById('mem-total').textContent = s.total || 0;
+      document.getElementById('mem-semantic').textContent = s.semantic || 0;
+      document.getElementById('mem-episodic').textContent = s.episodic || 0;
+      document.getElementById('mem-working').textContent = s.working || 0;
+    }).catch(function() {});
+  }
+
+  // Memory search
+  var memSearchInput = document.getElementById('memory-search');
+  if (memSearchInput) {
+    memSearchInput.addEventListener('input', function() {
+      var q = this.value.trim();
+      if (q.length < 2) return loadMemories();
+      fetch(BASE + '/api/memory/search?q=' + encodeURIComponent(q)).then(function(r) { return r.json(); }).then(function(memories) {
+        var list = document.getElementById('memory-list');
+        if (!memories || memories.length === 0) {
+          list.innerHTML = '<div class="empty">No matches for "' + escapeHtml(q) + '"</div>';
+          return;
+        }
+        list.innerHTML = memories.map(function(m) {
+          return '<div class="memory-item">' +
+            '<span class="memory-type ' + (m.type || 'semantic') + '">' + (m.type || 'semantic') + '</span>' +
+            '<span class="memory-content">' + escapeHtml(m.content || m.text || '') + '</span>' +
+            '<span class="memory-score">' + ((m.relevance || m.score || 0) * 100).toFixed(0) + '%</span>' +
+            '</div>';
+        }).join('');
+      }).catch(function() {});
+    });
+  }
+
+  // ===== Surfaces =====
+  function loadSurfaces() {
+    fetch(BASE + '/api/surfaces').then(function(r) { return r.json(); }).then(function(surfaces) {
+      if (!surfaces || surfaces.length === 0) return;
+      var grid = document.getElementById('surface-grid');
+      grid.innerHTML = surfaces.map(function(s) {
+        var statusClass = s.running ? 'online' : 'offline';
+        return '<div class="surface-card">' +
+          '<div class="surface-header">' +
+          '<span class="surface-icon">' + (s.icon || s.type.substring(0,2).toUpperCase()) + '</span>' +
+          '<span class="surface-name">' + escapeHtml(s.name || s.type) + '</span>' +
+          '<span class="surface-status ' + statusClass + '">' + (s.running ? 'online' : 'offline') + '</span>' +
+          '</div>' +
+          '<div class="surface-stat">' + escapeHtml(s.stats || '') + '</div>' +
+          '</div>';
+      }).join('');
+    }).catch(function() {});
+  }
+
+  // ===== Marketplace =====
+  function loadMarketplace() {
+    fetch(BASE + '/api/marketplace/agents').then(function(r) { return r.json(); }).then(function(agents) {
+      if (!agents || agents.length === 0) return;
+      var grid = document.getElementById('marketplace-grid');
+      grid.innerHTML = agents.map(function(a) {
+        var initials = (a.name || 'AG').substring(0,2).toUpperCase();
+        var tags = (a.tags || []).map(function(t) {
+          return '<span class="agent-tag">' + escapeHtml(t) + '</span>';
+        }).join('');
+        return '<div class="agent-card">' +
+          '<div class="agent-card-header">' +
+          '<div class="agent-avatar">' + initials + '</div>' +
+          '<div><div class="agent-name">' + escapeHtml(a.name) + '</div>' +
+          '<div class="agent-version">' + escapeHtml(a.version || 'v1.0.0') + '</div></div>' +
+          '</div>' +
+          '<div class="agent-desc">' + escapeHtml(a.description || '') + '</div>' +
+          '<div class="agent-tags">' + tags + '</div>' +
+          '<div class="agent-footer">' +
+          '<span class="agent-rating">' + (a.rating || 0).toFixed(1) + '/5</span>' +
+          '<span class="agent-price">' + (a.price ? '$' + a.price.toFixed(2) + '/run' : 'Free') + '</span>' +
+          '</div></div>';
+      }).join('');
+    }).catch(function() {});
+  }
+
+  // Marketplace search
+  var mpSearchInput = document.getElementById('marketplace-search');
+  if (mpSearchInput) {
+    mpSearchInput.addEventListener('input', function() {
+      var q = this.value.trim().toLowerCase();
+      var cards = document.querySelectorAll('#marketplace-grid .agent-card');
+      cards.forEach(function(card) {
+        var name = card.querySelector('.agent-name');
+        var desc = card.querySelector('.agent-desc');
+        var text = ((name ? name.textContent : '') + ' ' + (desc ? desc.textContent : '')).toLowerCase();
+        card.style.display = (!q || text.includes(q)) ? '' : 'none';
+      });
+    });
+  }
+
+  // Also filter topology agent events into comm log
+  function handleAgentEvents(event, data, ts) {
+    if (event.startsWith('agent:')) {
+      var commLog = document.getElementById('agent-comm-log');
+      if (commLog && commLog.querySelector('.empty')) commLog.innerHTML = '';
+      if (commLog) {
+        var time = new Date(ts).toLocaleTimeString();
+        var type = event.includes('error') ? 'error' : event.includes('complete') ? 'complete' : 'start';
+        commLog.insertAdjacentHTML('afterbegin',
+          '<div class="feed-item">' +
+          '<span class="feed-time">' + time + '</span>' +
+          '<span class="feed-event ' + type + '">' + event + '</span>' +
+          '<span class="feed-msg">' + escapeHtml(summarizeEvent(event, data)) + '</span>' +
+          '</div>'
+        );
+      }
+    }
+    if (event.startsWith('surface:') || event.startsWith('mcp:')) {
+      var sfFeed = document.getElementById('surface-feed');
+      if (sfFeed && sfFeed.querySelector('.empty')) sfFeed.innerHTML = '';
+      if (sfFeed) {
+        var time2 = new Date(ts).toLocaleTimeString();
+        var type2 = event.includes('error') ? 'error' : event.includes('complete') || event.includes('connected') ? 'complete' : 'start';
+        sfFeed.insertAdjacentHTML('afterbegin',
+          '<div class="feed-item">' +
+          '<span class="feed-time">' + time2 + '</span>' +
+          '<span class="feed-event ' + type2 + '">' + event + '</span>' +
+          '<span class="feed-msg">' + escapeHtml(summarizeEvent(event, data)) + '</span>' +
+          '</div>'
+        );
+      }
+    }
+  }
+
+  // Patch handleEvent to also dispatch to new tabs
+  var origHandleEvent = handleEvent;
+  handleEvent = function(event, data, ts) {
+    origHandleEvent(event, data, ts);
+    handleAgentEvents(event, data, ts);
+  };
+
   // ===== Init =====
   connect();
   setInterval(refreshStatus, 10000);
   setInterval(loadCharts, 30000);
   setTimeout(loadCharts, 2000);
+  setTimeout(drawTopology, 500);
 })();
 </script>
 </body>
