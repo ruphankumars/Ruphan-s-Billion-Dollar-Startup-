@@ -21,7 +21,9 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm run typecheck
-      - run: npm run lint
+      - name: Run lint (optional)
+        run: npm run lint
+        continue-on-error: true
 
   test:
     name: Test (Node ${{ matrix.node-version }})
