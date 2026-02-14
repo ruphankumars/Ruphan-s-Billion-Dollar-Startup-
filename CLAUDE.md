@@ -412,7 +412,96 @@ src/evolution/
 
 ---
 
-## Existing Module Map (44 modules, 268+ files)
+## Core Foundation: 19 Kernel Primitives (The AI Syscall Table)
+
+CortexOS implements 19 kernel primitives organized in a 6-layer dependency hierarchy — analogous to Unix syscalls. **Every AI operation must flow through these primitives.** No AI activity can run without CortexOS as its foundation.
+
+### Layer Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  Layer 5: COORDINATION & ROUTING                                     │
+│  route() · self_evolve() · judge()                                   │
+├──────────────────────────────────────────────────────────────────────┤
+│  Layer 4: MODEL LIFECYCLE                                            │
+│  adapt() · instruct() · distill() · align() · cascade()             │
+├──────────────────────────────────────────────────────────────────────┤
+│  Layer 3: REASONING & SEARCH                                         │
+│  search() · simulate()                                               │
+├──────────────────────────────────────────────────────────────────────┤
+│  Layer 2: MEMORY SUBSYSTEM                                           │
+│  retrieve() · remember() · compress() · index() · evolve_memory()    │
+├──────────────────────────────────────────────────────────────────────┤
+│  Layer 1: CORE EXECUTION                                             │
+│  scale() · reason() · extend()                                       │
+├──────────────────────────────────────────────────────────────────────┤
+│  Layer 0: HARDWARE ABSTRACTION                                       │
+│  attention()                                                         │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+### Kernel Module Components
+
+| Component | File | Role | Analogy |
+|-----------|------|------|---------|
+| **KernelRegistry** | `kernel-registry.ts` | Syscall table — registers, dispatches, tracks all 19 primitives | Linux syscall table |
+| **ContextManager** | `context-manager.ts` | MMU — Q-value based STM/LTM memory management | Memory Management Unit |
+| **ModelRouter** | `model-router.ts` | I/O bus — confidence-gated cascade routing, LoRA adapters | I/O Bus Controller |
+| **ReasoningEngine** | `reasoning-engine.ts` | CPU — CoT, ToT, MCTS, simulation, judging, self-evolution | Central Processing Unit |
+
+### All 19 Kernel Primitives
+
+| # | Primitive | Layer | Research Origin | Description |
+|---|-----------|-------|-----------------|-------------|
+| 1 | `attention()` | 0 | Vaswani 2017, DroPE 2025 | Foundational compute primitive |
+| 2 | `scale()` | 1 | RSA, Microsoft STOP | Test-time compute scaling |
+| 3 | `reason()` | 1 | Wei 2022, Reflexion | Chain-of-thought reasoning |
+| 4 | `extend()` | 1 | DroPE 2025, YaRN | Context window extension |
+| 5 | `retrieve()` | 2 | Lewis 2020, UniversalRAG | Retrieval-augmented generation |
+| 6 | `remember()` | 2 | MemRL 2025 | Q-value based memory storage |
+| 7 | `compress()` | 2 | Focus 2025 | Slime mold GC / context compression |
+| 8 | `index()` | 2 | SimpleMem 2025 | Memory indexing for retrieval |
+| 9 | `evolve_memory()` | 2 | Dr. Zero 2025 | Self-curriculum memory evolution |
+| 10 | `search()` | 3 | Yao 2023 (ToT), MCTS | Tree/graph search over reasoning |
+| 11 | `simulate()` | 3 | AlphaGo, MuZero | Monte Carlo world model rollout |
+| 12 | `adapt()` | 4 | Hu 2021 (LoRA) | LoRA/QLoRA adapter management |
+| 13 | `instruct()` | 4 | InstructGPT 2022 | Instruction tuning / alignment |
+| 14 | `distill()` | 4 | Hinton 2015 | Knowledge distillation |
+| 15 | `align()` | 4 | Anthropic 2022 (CAI) | Value alignment (RLHF/DPO/CAI) |
+| 16 | `cascade()` | 4 | CortexOS CRSAE | Confidence-gated model cascading |
+| 17 | `route()` | 5 | UniversalRAG 2025 | Modality-aware routing |
+| 18 | `self_evolve()` | 5 | Gödel Agent, STOP | Meta-RL self-evolution |
+| 19 | `judge()` | 5 | Zheng 2023 (LLM-as-Judge) | Multi-judge evaluation panel |
+
+### 10 Agent Primitives (Userspace API: cortex.*)
+
+| Agent Primitive | Maps to Kernel Primitives |
+|----------------|--------------------------|
+| `cortex.llm` | reason(), scale(), cascade() |
+| `cortex.tools` | extend() |
+| `cortex.rag` | retrieve(), index(), compress() |
+| `cortex.memory` | remember(), compress(), evolve_memory() |
+| `cortex.agents` | scale(), route(), cascade() |
+| `cortex.web` | retrieve(), route() |
+| `cortex.mcp` | route(), extend() |
+| `cortex.observe` | judge(), simulate() |
+| `cortex.ui` | route() |
+| `cortex.evolve` | self_evolve(), adapt(), distill(), align() |
+
+### Key Patterns Implemented
+
+- **MemRL Q-Value Eviction**: Memories scored by utility; lowest-Q evicted first
+- **Slime Mold GC**: Low-Q entries consolidated into knowledge blocks
+- **Confidence-Gated Cascade**: haiku (>0.8) → sonnet (>0.5) → opus (>0.0)
+- **Depth-Aware Routing (RLM)**: Cheaper models at deeper recursion levels
+- **4 Search Algorithms**: BFS, DFS, beam search, MCTS with UCB1
+- **3 Consensus Methods**: Majority vote, weighted average, debate convergence
+- **Dr. Zero Self-Curriculum**: Proposer-solver co-evolution without training data
+- **6-Layer Dependency Graph**: Each primitive only depends on lower layers
+
+---
+
+## Existing Module Map (46 modules, 276+ files)
 
 ### Core Infrastructure
 | Module | Path | Key Classes |
@@ -574,5 +663,5 @@ refactor: {description} # Refactoring
 
 ---
 
-*Last updated: February 14, 2026*
-*CortexOS v0.1.0 — 44 modules, 268+ source files, 3,979 tests, 178 test files*
+*Last updated: February 15, 2026*
+*CortexOS v0.1.0 — 46 modules, 282+ source files, 4,445 tests, 189 test files*
