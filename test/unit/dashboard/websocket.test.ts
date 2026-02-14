@@ -3,6 +3,9 @@ import { createServer } from 'http';
 import { EventBus } from '../../../src/core/events.js';
 import { createWebSocketHandler, type WebSocketHandler } from '../../../src/dashboard/websocket.js';
 
+// WebSocket is globally available in Node 22+ but not in Node 20
+const hasGlobalWebSocket = typeof globalThis.WebSocket !== 'undefined';
+
 describe('Dashboard WebSocket', () => {
   let httpServer: ReturnType<typeof createServer> | null = null;
   let wsHandler: WebSocketHandler | null = null;
@@ -44,7 +47,7 @@ describe('Dashboard WebSocket', () => {
     expect(wsHandler!.clientCount()).toBe(0);
   });
 
-  it('should accept connections and send welcome message', async () => {
+  it.skipIf(!hasGlobalWebSocket)('should accept connections and send welcome message', async () => {
     const wsUrl = await setup();
 
     const ws = new WebSocket(wsUrl);
@@ -60,7 +63,7 @@ describe('Dashboard WebSocket', () => {
     ws.close();
   });
 
-  it('should broadcast EventBus events to clients', async () => {
+  it.skipIf(!hasGlobalWebSocket)('should broadcast EventBus events to clients', async () => {
     const eventBus = new EventBus();
     httpServer = createServer();
     wsHandler = createWebSocketHandler(httpServer, eventBus);
@@ -96,7 +99,7 @@ describe('Dashboard WebSocket', () => {
     ws.close();
   });
 
-  it('should include timestamp in all messages', async () => {
+  it.skipIf(!hasGlobalWebSocket)('should include timestamp in all messages', async () => {
     const wsUrl = await setup();
     const ws = new WebSocket(wsUrl);
 
@@ -111,7 +114,7 @@ describe('Dashboard WebSocket', () => {
     ws.close();
   });
 
-  it('should handle client disconnect gracefully', async () => {
+  it.skipIf(!hasGlobalWebSocket)('should handle client disconnect gracefully', async () => {
     const wsUrl = await setup();
     const ws = new WebSocket(wsUrl);
 
@@ -128,7 +131,7 @@ describe('Dashboard WebSocket', () => {
     expect(wsHandler!.clientCount()).toBe(0);
   });
 
-  it('should send valid JSON messages', async () => {
+  it.skipIf(!hasGlobalWebSocket)('should send valid JSON messages', async () => {
     const wsUrl = await setup();
     const ws = new WebSocket(wsUrl);
 

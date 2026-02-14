@@ -87,7 +87,7 @@ async function executeRun(prompt: string, options: RunOptions): Promise<void> {
         verify: '✅ Verifying quality...',
         memorize: '💾 Storing learnings...',
       };
-      const stage = data.stage as string;
+      const stage = (data as Record<string, unknown>).stage as string;
       console.log(stageNames[stage] || `  ${stage}...`);
     });
 

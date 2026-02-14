@@ -48,7 +48,7 @@ async function startChat(options: ChatOptions): Promise<void> {
 
   // Apply CLI overrides
   if (options.provider) {
-    config.providers = { ...config.providers, default: options.provider };
+    config.providers = { ...config.providers, default: options.provider as CortexConfig['providers']['default'] };
   }
 
   // Create provider
