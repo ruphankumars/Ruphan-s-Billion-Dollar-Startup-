@@ -914,5 +914,49 @@ export type {
   WorkforceStats,
 } from './workforce/index.js';
 
+// Evolution Engine — CRSAE (Convergent Recursive Self-Aggregating Evolution)
+export {
+  PopulationReasoner,
+  ConvergenceDetector,
+  BudgetController,
+  BudgetExceededError as EvolutionBudgetExceededError,
+  MetaController,
+  StrategyEvolver,
+  SkillLibrary,
+  CycleDetector,
+} from './evolution/index.js';
+export type {
+  PopulationConfig,
+  Candidate,
+  PopulationState,
+  AggregationResult,
+  ConvergenceConfig,
+  ConvergenceResult,
+  BudgetConfig as EvolutionBudgetConfig,
+  BudgetState,
+  BudgetRemaining,
+  BudgetTier,
+  MetaControllerConfig,
+  OrchestrationMode,
+  ComputeScale,
+  ReasoningDepth,
+  OrchestrationDecision,
+  DecisionOutcome as EvolutionDecisionOutcome,
+  StrategyEvolverConfig,
+  StrategyVariant,
+  PerformanceMetric as EvolutionPerformanceMetric,
+  SkillLibraryConfig,
+  Skill as EvolutionSkill,
+  SkillCategory,
+  CycleDetectorConfig,
+  CycleInfo,
+  SelfTesterConfig,
+  SelfTestResult,
+  SelfTestIssue,
+  EvolutionConfig,
+  EvolutionStats,
+  EvolutionEventType,
+} from './evolution/index.js';
+
 // Version
 export { VERSION, NAME } from './version.js';
