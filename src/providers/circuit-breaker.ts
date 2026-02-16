@@ -44,10 +44,13 @@ export class CircuitBreaker {
   private successCount = 0;
   private lastFailureTime = 0;
   private halfOpenAttempts = 0;
+  private halfOpenEnteredAt = 0;
 
   private readonly failureThreshold: number;
   private readonly resetTimeoutMs: number;
   private readonly halfOpenMaxAttempts: number;
+  /** Maximum time to stay in HALF_OPEN before auto-resetting to CLOSED (ms) */
+  private readonly halfOpenTimeoutMs: number;
 
   constructor(
     private readonly name: string,
@@ -56,6 +59,7 @@ export class CircuitBreaker {
     this.failureThreshold = options.failureThreshold ?? 5;
     this.resetTimeoutMs = options.resetTimeoutMs ?? 60000;
     this.halfOpenMaxAttempts = options.halfOpenMaxAttempts ?? 1;
+    this.halfOpenTimeoutMs = 60000; // Auto-reset HALF_OPEN after 60s
   }
 
   /**
@@ -73,20 +77,37 @@ export class CircuitBreaker {
       }
     }
 
-    // In HALF_OPEN, limit attempts
+    // In HALF_OPEN, limit attempts. If stuck in HALF_OPEN for too long
+    // (e.g., all test attempts failed but no further calls came in to
+    // transition state), auto-reset to CLOSED after halfOpenTimeoutMs.
     if (this.state === CircuitState.HALF_OPEN) {
       if (this.halfOpenAttempts >= this.halfOpenMaxAttempts) {
-        // Already used our test attempts, treat as still open
-        throw new CircuitOpenError(this.name, this.resetTimeoutMs);
+        // Check time-based auto-reset: if we've been in HALF_OPEN too long, reset
+        const elapsed = Date.now() - this.halfOpenEnteredAt;
+        if (elapsed >= this.halfOpenTimeoutMs) {
+          this.transitionTo(CircuitState.CLOSED);
+          this.failureCount = 0;
+          this.halfOpenAttempts = 0;
+        } else {
+          // Already used our test attempts, treat as still open
+          throw new CircuitOpenError(this.name, this.halfOpenTimeoutMs - elapsed);
+        }
       }
-      this.halfOpenAttempts++;
     }
 
     try {
       const result = await fn();
+      // Increment halfOpenAttempts AFTER successful execution (not before),
+      // so a thrown exception does not consume an attempt slot.
+      if (this.state === CircuitState.HALF_OPEN) {
+        this.halfOpenAttempts++;
+      }
       this.onSuccess();
       return result;
     } catch (error) {
+      if (this.state === CircuitState.HALF_OPEN) {
+        this.halfOpenAttempts++;
+      }
       this.onFailure();
       throw error;
     }
@@ -163,6 +184,9 @@ export class CircuitBreaker {
         'Circuit breaker state transition',
       );
       this.state = newState;
+      if (newState === CircuitState.HALF_OPEN) {
+        this.halfOpenEnteredAt = Date.now();
+      }
     }
   }
 }

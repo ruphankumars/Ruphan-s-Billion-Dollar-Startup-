@@ -13,6 +13,7 @@
 
 import { EventEmitter } from 'node:events';
 import { createHash } from 'node:crypto';
+import { BoundedMap } from '../utils/bounded-map.js';
 import type { ConvergenceConfig, ConvergenceResult } from './types.js';
 
 const DEFAULT_CONFIG: Required<ConvergenceConfig> = {
@@ -25,7 +26,7 @@ const DEFAULT_CONFIG: Required<ConvergenceConfig> = {
 export class ConvergenceDetector extends EventEmitter {
   private config: Required<ConvergenceConfig>;
   private running = false;
-  private histories: Map<string, number[]> = new Map();
+  private histories: BoundedMap<string, number[]> = new BoundedMap(200);
   private checksPerformed = 0;
   private convergencesDetected = 0;
 
@@ -108,15 +109,18 @@ export class ConvergenceDetector extends EventEmitter {
       };
     }
 
-    // Compute pairwise similarities
+    // Compute pairwise similarities using K=15 random pair sampling
     let totalSimilarity = 0;
     let pairs = 0;
 
-    for (let i = 0; i < candidates.length; i++) {
-      for (let j = i + 1; j < candidates.length; j++) {
-        totalSimilarity += this.computeSimilarity(candidates[i], candidates[j]);
-        pairs++;
-      }
+    const totalPossiblePairs = Math.floor(candidates.length * (candidates.length - 1) / 2);
+    const maxPairs = Math.min(15, totalPossiblePairs);
+    for (let p = 0; p < maxPairs; p++) {
+      const i = Math.floor(Math.random() * candidates.length);
+      let j = Math.floor(Math.random() * (candidates.length - 1));
+      if (j >= i) j++;
+      totalSimilarity += this.computeSimilarity(candidates[i], candidates[j]);
+      pairs++;
     }
 
     const avgSimilarity = pairs > 0 ? totalSimilarity / pairs : 1;

@@ -4,6 +4,14 @@
  * Records execution outcomes, maintains strategy weights via exponential
  * moving average, and recommends optimal strategies based on historical
  * performance. Zero npm dependencies.
+ *
+ * **Integration with CortexEngine:**
+ * This module is designed to be wired into the CortexEngine's post-execution
+ * pipeline. After each task execution, the engine should call `recordOutcome()`
+ * with the execution metrics. Before strategy selection, the engine (or
+ * ReasoningOrchestrator) should call `getRecommendedStrategy()` to influence
+ * which reasoning strategy is chosen for the next task. Currently these
+ * integration points are NOT yet wired — see CLAUDE.md "Gap 1" for details.
  */
 
 import { randomUUID } from 'node:crypto';

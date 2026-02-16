@@ -75,6 +75,10 @@ export type {
   CortexEvents,
 } from './core/types.js';
 
+// Utils
+export { BoundedMap } from './utils/bounded-map.js';
+export { CircularBuffer } from './utils/circular-buffer.js';
+
 // Agents
 export { Agent, type AgentOptions } from './agents/agent.js';
 export { SwarmCoordinator, type CoordinatorOptions } from './agents/coordinator.js';

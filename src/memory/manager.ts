@@ -19,6 +19,7 @@ import type {
 import { LocalEmbeddingEngine } from './embeddings.js';
 import { SQLiteVectorStore } from './store/vector-sqlite.js';
 import { GlobalMemoryPool } from './global-pool.js';
+import { BoundedMap } from '../utils/bounded-map.js';
 import { nanoid } from 'nanoid';
 import { join } from 'path';
 import { getLogger } from '../core/logger.js';
@@ -28,7 +29,7 @@ const logger = getLogger();
 export class CortexMemoryManager implements IMemoryManager {
   private embeddingEngine: EmbeddingEngine;
   private vectorStore: SQLiteVectorStore;
-  private memoryCache: Map<string, MemoryEntry> = new Map();
+  private memoryCache: BoundedMap<string, MemoryEntry> = new BoundedMap<string, MemoryEntry>(500);
   private config: MemoryConfig;
   private globalPool?: GlobalMemoryPool;
 
@@ -229,13 +230,19 @@ export class CortexMemoryManager implements IMemoryManager {
   }
 
   /**
-   * Get memory system statistics — aggregates type counts and importance from stored vectors
+   * Get memory system statistics — aggregates type counts and importance from a sample of stored vectors.
+   * Samples at most 200 vectors to avoid loading the entire store into memory.
    */
   async getStats(): Promise<MemoryStats> {
     const totalMemories = await this.vectorStore.count();
 
-    // Aggregate stats from all stored vectors
+    // Sample up to 200 vectors to avoid loading all vectors into memory
+    const MAX_SAMPLE = 200;
     const allVectors = await this.vectorStore.getAll();
+    const sample = allVectors.length > MAX_SAMPLE
+      ? allVectors.slice(0, MAX_SAMPLE)
+      : allVectors;
+
     const byType: Record<MemoryType, number> = {
       working: 0,
       episodic: 0,
@@ -247,7 +254,7 @@ export class CortexMemoryManager implements IMemoryManager {
     let oldest: Date | undefined;
     let newest: Date | undefined;
 
-    for (const vec of allVectors) {
+    for (const vec of sample) {
       const type = (vec.metadata.type as MemoryType) || 'semantic';
       if (type in byType) {
         byType[type]++;
@@ -265,12 +272,20 @@ export class CortexMemoryManager implements IMemoryManager {
       }
     }
 
+    // Extrapolate type counts if we sampled a subset
+    if (sample.length < totalMemories && sample.length > 0) {
+      const scale = totalMemories / sample.length;
+      for (const type of Object.keys(byType) as MemoryType[]) {
+        byType[type] = Math.round(byType[type] * scale);
+      }
+    }
+
     const storageSize = await this.vectorStore.getStorageSize();
 
     return {
       totalMemories,
       byType,
-      averageImportance: totalMemories > 0 ? totalImportance / totalMemories : 0,
+      averageImportance: sample.length > 0 ? totalImportance / sample.length : 0,
       storageSize,
       oldestMemory: oldest,
       newestMemory: newest,

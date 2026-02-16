@@ -102,9 +102,18 @@ export class MemoryConsolidator {
     const now = Date.now();
     let removed = 0;
 
-    // Scan all memories with a dummy embedding (get everything)
-    const dummyVec = new Array(this.embedding.dimensions()).fill(0);
-    const allResults = await this.store.search(dummyVec, this.options.batchSize);
+    // Use getAll() if available for a true full scan; otherwise fall back to
+    // a zero-vector search which acts as an approximate wildcard but may miss
+    // entries that are orthogonal to the zero vector depending on the store impl.
+    let allResults: Array<{ id: string; score: number; metadata: Record<string, unknown> }>;
+    if ('getAll' in this.store && typeof (this.store as any).getAll === 'function') {
+      const raw = await (this.store as any).getAll() as Array<{ id: string; embedding: number[]; metadata: Record<string, unknown> }>;
+      allResults = raw.slice(0, this.options.batchSize).map(r => ({ id: r.id, score: 1, metadata: r.metadata }));
+    } else {
+      // Limitation: zero-vector search may not return all entries in every store impl.
+      const dummyVec = new Array(this.embedding.dimensions()).fill(0);
+      allResults = await this.store.search(dummyVec, this.options.batchSize);
+    }
 
     for (const result of allResults) {
       const createdAt = result.metadata.createdAt
@@ -142,8 +151,16 @@ export class MemoryConsolidator {
     let removed = 0;
     const processed = new Set<string>();
 
-    const dummyVec = new Array(this.embedding.dimensions()).fill(0);
-    const allResults = await this.store.search(dummyVec, this.options.batchSize);
+    // Use getAll() if available; otherwise fall back to zero-vector search
+    // (see sweepDecayed() comment for limitations of zero-vector approach).
+    let allResults: Array<{ id: string; score: number; metadata: Record<string, unknown> }>;
+    if ('getAll' in this.store && typeof (this.store as any).getAll === 'function') {
+      const raw = await (this.store as any).getAll() as Array<{ id: string; embedding: number[]; metadata: Record<string, unknown> }>;
+      allResults = raw.slice(0, this.options.batchSize).map(r => ({ id: r.id, score: 1, metadata: r.metadata }));
+    } else {
+      const dummyVec = new Array(this.embedding.dimensions()).fill(0);
+      allResults = await this.store.search(dummyVec, this.options.batchSize);
+    }
 
     for (const entry of allResults) {
       if (processed.has(entry.id)) continue;
@@ -168,6 +185,10 @@ export class MemoryConsolidator {
           await this.store.delete(toRemove);
           processed.add(toRemove);
           removed++;
+
+          // If the current entry was the one removed, stop checking its
+          // remaining matches — it no longer exists in the store.
+          if (toRemove === entry.id) break;
         }
       }
     }
@@ -187,8 +208,16 @@ export class MemoryConsolidator {
   private async discoverRelations(): Promise<number> {
     let relationsFound = 0;
 
-    const dummyVec = new Array(this.embedding.dimensions()).fill(0);
-    const allResults = await this.store.search(dummyVec, Math.min(this.options.batchSize, 100));
+    // Use getAll() if available; otherwise fall back to zero-vector search.
+    const limit = Math.min(this.options.batchSize, 100);
+    let allResults: Array<{ id: string; score: number; metadata: Record<string, unknown> }>;
+    if ('getAll' in this.store && typeof (this.store as any).getAll === 'function') {
+      const raw = await (this.store as any).getAll() as Array<{ id: string; embedding: number[]; metadata: Record<string, unknown> }>;
+      allResults = raw.slice(0, limit).map(r => ({ id: r.id, score: 1, metadata: r.metadata }));
+    } else {
+      const dummyVec = new Array(this.embedding.dimensions()).fill(0);
+      allResults = await this.store.search(dummyVec, limit);
+    }
 
     if (allResults.length < 2) return 0;
 

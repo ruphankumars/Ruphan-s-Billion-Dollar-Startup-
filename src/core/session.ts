@@ -75,6 +75,7 @@ export class SessionManager {
   private activeSessionId: string | null = null;
   private persistPath: string | null;
   private maxMessagesPerSession: number;
+  private persistTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(config: { persistPath?: string; maxMessages?: number } = {}) {
     this.persistPath = config.persistPath ?? null;
@@ -337,7 +338,7 @@ export class SessionManager {
   }
 
   /** Persist all sessions to disk */
-  persist(): void {
+  async persist(): Promise<void> {
     if (!this.persistPath) return;
 
     try {
@@ -347,12 +348,12 @@ export class SessionManager {
         sessions: Object.fromEntries(this.sessions),
       });
 
-      // Use globalThis.process for Node.js fs access
-      const fs = require('fs');
-      const path = require('path');
-      const dir = path.dirname(this.persistPath);
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(this.persistPath, data, 'utf8');
+      const { writeFile, mkdir } = await import('node:fs/promises');
+      const { dirname } = await import('node:path');
+      const { existsSync } = await import('node:fs');
+      const dir = dirname(this.persistPath);
+      if (!existsSync(dir)) await mkdir(dir, { recursive: true });
+      await writeFile(this.persistPath, data, 'utf8');
     } catch {
       // Silently fail on persist errors (e.g., browser environment)
     }
@@ -381,10 +382,11 @@ export class SessionManager {
   }
 
   private autoPersist(): void {
-    if (this.persistPath) {
-      // Debounced persist
-      this.persist();
-    }
+    if (!this.persistPath) return;
+    if (this.persistTimer) clearTimeout(this.persistTimer);
+    this.persistTimer = setTimeout(() => {
+      this.persist().catch(() => {});
+    }, 100);
   }
 
   private generateId(): string {

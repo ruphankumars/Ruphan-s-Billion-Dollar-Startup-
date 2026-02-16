@@ -260,7 +260,12 @@ export class CapabilityExpander extends EventEmitter {
     ];
 
     for (const { keywords, capability } of patterns) {
-      if (keywords.some((kw) => lower.includes(kw))) {
+      if (keywords.some((kw) => {
+        // Use word-boundary regex to avoid false positives from substring
+        // matches (e.g., "path" matching "empathy", "sql" matching "resultsql").
+        const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return new RegExp(`\\b${escaped}\\b`, 'i').test(failureReason);
+      })) {
         return capability;
       }
     }

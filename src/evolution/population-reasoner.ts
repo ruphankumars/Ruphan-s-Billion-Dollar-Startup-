@@ -13,6 +13,8 @@
 
 import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
+import { BoundedMap } from '../utils/bounded-map.js';
+import { CircularBuffer } from '../utils/circular-buffer.js';
 import type {
   PopulationConfig,
   Candidate,
@@ -32,8 +34,8 @@ const DEFAULT_CONFIG: Required<PopulationConfig> = {
 export class PopulationReasoner extends EventEmitter {
   private config: Required<PopulationConfig>;
   private running = false;
-  private populations: Map<string, PopulationState> = new Map();
-  private history: PopulationState[] = [];
+  private populations: BoundedMap<string, PopulationState> = new BoundedMap(50);
+  private history: CircularBuffer<PopulationState> = new CircularBuffer(100);
   private totalTasksProcessed = 0;
   private totalIterations = 0;
 
@@ -203,9 +205,6 @@ export class PopulationReasoner extends EventEmitter {
 
     // Archive to history
     this.history.push({ ...finalState });
-    if (this.history.length > 100) {
-      this.history.splice(0, this.history.length - 100);
-    }
 
     return finalState;
   }
@@ -233,15 +232,18 @@ export class PopulationReasoner extends EventEmitter {
     let totalDistance = 0;
     let pairs = 0;
 
-    for (let i = 0; i < candidates.length; i++) {
-      for (let j = i + 1; j < candidates.length; j++) {
-        const similarity = this.computeJaccard(
-          candidates[i].content,
-          candidates[j].content
-        );
-        totalDistance += 1 - similarity;
-        pairs++;
-      }
+    const maxPairs = Math.min(10, Math.floor(candidates.length * (candidates.length - 1) / 2));
+    // Sample random pairs instead of all-pairs
+    for (let p = 0; p < maxPairs; p++) {
+      const i = Math.floor(Math.random() * candidates.length);
+      let j = Math.floor(Math.random() * (candidates.length - 1));
+      if (j >= i) j++;
+      const similarity = this.computeJaccard(
+        candidates[i].content,
+        candidates[j].content
+      );
+      totalDistance += 1 - similarity;
+      pairs++;
     }
 
     return pairs > 0 ? totalDistance / pairs : 0;

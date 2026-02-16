@@ -210,6 +210,7 @@ Do not include any other text.`;
         description: 'Direct implementation approach',
         plan: `Implement the task directly: ${task.description}`,
         score: 0,
+        metadata: { degraded: true, parseError: message },
       }];
     }
   }

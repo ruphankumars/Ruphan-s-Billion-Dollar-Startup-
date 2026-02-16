@@ -108,7 +108,14 @@ export class TokenBucketRateLimiter {
    */
   private refill(): void {
     const now = Date.now();
-    const elapsed = now - this.lastRefillTime;
+    const elapsed = Math.max(0, now - this.lastRefillTime);
+
+    // Guard against clock skew (e.g., NTP adjustment, VM migration) which
+    // could produce a negative elapsed time and grant unlimited tokens.
+    if (now < this.lastRefillTime) {
+      this.lastRefillTime = now;
+      return;
+    }
 
     if (elapsed < this.refillIntervalMs) return;
 

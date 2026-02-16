@@ -163,20 +163,26 @@ export class IPCMessageBus extends MessageBus {
     };
 
     try {
-      proc.send?.(envelope);
-      this.inFlightCount++;
+      const sent = proc.send?.(envelope);
+      // proc.send() returns false if the channel is closed or the message
+      // cannot be sent. Only track in-flight if actually sent.
+      if (sent !== false) {
+        this.inFlightCount++;
 
-      // Set timeout for ack
-      const timer = setTimeout(() => {
-        this.pendingAcks.delete(seq);
-        this.inFlightCount--;
-        logger.warn({ seq }, 'IPC message ack timeout');
-      }, this.options.messageTimeout);
+        // Set timeout for ack
+        const timer = setTimeout(() => {
+          this.pendingAcks.delete(seq);
+          this.inFlightCount--;
+          logger.warn({ seq }, 'IPC message ack timeout');
+        }, this.options.messageTimeout);
 
-      this.pendingAcks.set(seq, {
-        resolve: () => {},
-        timer,
-      });
+        this.pendingAcks.set(seq, {
+          resolve: () => {},
+          timer,
+        });
+      } else {
+        logger.warn({ seq }, 'IPC message send returned false, channel may be closed');
+      }
     } catch (err) {
       logger.warn({ error: err }, 'Failed to send IPC message');
     }

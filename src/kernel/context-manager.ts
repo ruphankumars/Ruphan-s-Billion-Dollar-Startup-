@@ -21,6 +21,7 @@
 
 import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
+import { BoundedMap } from '../utils/bounded-map.js';
 import type {
   ContextManagerConfig,
   MemoryEntry,
@@ -53,7 +54,7 @@ export class ContextManager extends EventEmitter {
   private semanticIndex: Map<string, SemanticIndex> = new Map(); // entryId → index
 
   // Knowledge blocks from compression
-  private knowledgeBlocks: Map<string, KnowledgeBlock> = new Map();
+  private knowledgeBlocks = new BoundedMap<string, KnowledgeBlock>(200);
 
   // Metrics
   private totalStored = 0;
@@ -100,17 +101,12 @@ export class ContextManager extends EventEmitter {
     // Check if key already exists — update instead
     const existingId = this.keyIndex.get(`${scope}:${key}`);
     if (existingId && store.has(existingId)) {
-      return this.updateExisting(existingId, value, store);
+      return this.updateExisting(existingId, value, store, options?.tags, options?.importance);
     }
 
     // Evict if at capacity
     if (store.size >= capacity) {
       this.evictLowestQ(store, scope);
-    }
-
-    // Auto-compress STM when hitting threshold
-    if (scope === 'stm' && store.size >= capacity * this.config.autoCompressThreshold) {
-      this.compress();
     }
 
     const entry: MemoryEntry = {
@@ -273,7 +269,11 @@ export class ContextManager extends EventEmitter {
     // Clean up indices
     this.keyIndex.delete(`${entry.scope}:${entry.key}`);
     for (const tag of entry.tags) {
-      this.tagIndex.get(tag)?.delete(memoryId);
+      const tagSet = this.tagIndex.get(tag);
+      if (tagSet) {
+        tagSet.delete(memoryId);
+        if (tagSet.size === 0) this.tagIndex.delete(tag);
+      }
     }
     this.semanticIndex.delete(memoryId);
 
@@ -312,7 +312,11 @@ export class ContextManager extends EventEmitter {
     for (const entry of toCompress) {
       this.keyIndex.delete(`stm:${entry.key}`);
       for (const tag of entry.tags) {
-        this.tagIndex.get(tag)?.delete(entry.id);
+        const tagSet = this.tagIndex.get(tag);
+        if (tagSet) {
+          tagSet.delete(entry.id);
+          if (tagSet.size === 0) this.tagIndex.delete(tag);
+        }
       }
       this.semanticIndex.delete(entry.id);
       this.stm.delete(entry.id);
@@ -341,9 +345,13 @@ export class ContextManager extends EventEmitter {
     const lr = this.config.qLearningRate;
     const gamma = this.config.qDiscountFactor;
 
-    // Simplified Q-update: Q = (1-α)Q + α(r + γ * current_max)
-    const currentMax = entry.qValue; // self-reference for simplicity
-    entry.qValue = (1 - lr) * entry.qValue + lr * (reward + gamma * currentMax);
+    // Q-update: Q = (1-α)Q + α(r + γ * max Q(other entries))
+    // Find max Q among all OTHER entries (STM + LTM)
+    const allEntries = [...this.stm.values(), ...this.ltm.values()];
+    const otherMax = allEntries
+      .filter(e => e.id !== entry.id)
+      .reduce((max, e) => Math.max(max, e.qValue ?? 0), 0);
+    entry.qValue = (1 - lr) * entry.qValue + lr * (reward + gamma * otherMax);
 
     // Clamp to [0, 1]
     entry.qValue = Math.max(0, Math.min(1, entry.qValue));
@@ -513,7 +521,11 @@ export class ContextManager extends EventEmitter {
       for (const entry of this.stm.values()) {
         this.keyIndex.delete(`stm:${entry.key}`);
         for (const tag of entry.tags) {
-          this.tagIndex.get(tag)?.delete(entry.id);
+          const tagSet = this.tagIndex.get(tag);
+          if (tagSet) {
+            tagSet.delete(entry.id);
+            if (tagSet.size === 0) this.tagIndex.delete(tag);
+          }
         }
         this.semanticIndex.delete(entry.id);
       }
@@ -524,7 +536,11 @@ export class ContextManager extends EventEmitter {
       for (const entry of this.ltm.values()) {
         this.keyIndex.delete(`ltm:${entry.key}`);
         for (const tag of entry.tags) {
-          this.tagIndex.get(tag)?.delete(entry.id);
+          const tagSet = this.tagIndex.get(tag);
+          if (tagSet) {
+            tagSet.delete(entry.id);
+            if (tagSet.size === 0) this.tagIndex.delete(tag);
+          }
         }
         this.semanticIndex.delete(entry.id);
       }
@@ -571,11 +587,44 @@ export class ContextManager extends EventEmitter {
 
   // ─── Private Helpers ───────────────────────────────────────────────────
 
-  private updateExisting(memoryId: string, value: unknown, store: Map<string, MemoryEntry>): MemoryEntry {
+  private updateExisting(
+    memoryId: string,
+    value: unknown,
+    store: Map<string, MemoryEntry>,
+    tags?: string[],
+    importance?: number
+  ): MemoryEntry {
     const entry = store.get(memoryId)!;
     entry.value = value;
     entry.lastAccessedAt = Date.now();
     entry.accessCount++;
+
+    // Update importance if provided
+    if (importance !== undefined) {
+      entry.importance = importance;
+      entry.qValue = importance;
+    }
+
+    // Update tags if provided
+    if (tags !== undefined) {
+      // Remove old tag index entries
+      for (const oldTag of entry.tags) {
+        const tagSet = this.tagIndex.get(oldTag);
+        if (tagSet) {
+          tagSet.delete(memoryId);
+          if (tagSet.size === 0) this.tagIndex.delete(oldTag);
+        }
+      }
+      // Set new tags and update index
+      entry.tags = tags;
+      for (const tag of tags) {
+        if (!this.tagIndex.has(tag)) {
+          this.tagIndex.set(tag, new Set());
+        }
+        this.tagIndex.get(tag)!.add(memoryId);
+      }
+    }
+
     return entry;
   }
 
@@ -594,7 +643,11 @@ export class ContextManager extends EventEmitter {
       const entry = store.get(lowestId)!;
       this.keyIndex.delete(`${scope}:${entry.key}`);
       for (const tag of entry.tags) {
-        this.tagIndex.get(tag)?.delete(lowestId);
+        const tagSet = this.tagIndex.get(tag);
+        if (tagSet) {
+          tagSet.delete(lowestId);
+          if (tagSet.size === 0) this.tagIndex.delete(tag);
+        }
       }
       this.semanticIndex.delete(lowestId);
       store.delete(lowestId);

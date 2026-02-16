@@ -19,6 +19,7 @@
 
 import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
+import { BoundedMap } from '../utils/bounded-map.js';
 import type {
   MetaControllerConfig,
   OrchestrationMode,
@@ -53,7 +54,7 @@ export class MetaController extends EventEmitter {
   private config: Required<MetaControllerConfig>;
   private running = false;
   private decisions: Map<string, OrchestrationDecision> = new Map();
-  private outcomes: Map<string, DecisionOutcome> = new Map();
+  private outcomes: BoundedMap<string, DecisionOutcome> = new BoundedMap(200);
   private decisionHistory: OrchestrationDecision[] = [];
 
   // Learned thresholds (evolve over time)
@@ -136,6 +137,12 @@ export class MetaController extends EventEmitter {
     this.decisionHistory.push(decision);
     if (this.decisionHistory.length > this.config.maxDecisionHistory) {
       this.decisionHistory.splice(0, this.decisionHistory.length - this.config.maxDecisionHistory);
+
+      // After trimming decisionHistory, remove decisions not in history
+      const historyIds = new Set(this.decisionHistory.map(d => d.id));
+      for (const key of this.decisions.keys()) {
+        if (!historyIds.has(key)) this.decisions.delete(key);
+      }
     }
 
     this.emit('evolution:meta:decision', {

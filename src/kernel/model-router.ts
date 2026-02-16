@@ -24,6 +24,7 @@
 
 import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
+import { BoundedMap } from '../utils/bounded-map.js';
 import type {
   ModelRouterConfig,
   ModelTier,
@@ -52,7 +53,7 @@ export class ModelRouter extends EventEmitter {
   private tiers: Map<string, ModelTier> = new Map();
 
   // Routing decisions
-  private decisions: Map<string, RoutingDecision> = new Map();
+  private decisions = new BoundedMap<string, RoutingDecision>(1000);
 
   // Modality routes
   private modalityRoutes: Map<Modality, ModalityRoute> = new Map();
@@ -69,6 +70,7 @@ export class ModelRouter extends EventEmitter {
   private tierUsage: Record<string, number> = {};
   private confidenceSum = 0;
   private confidenceCount = 0;
+  private activeRoutes = 0;
 
   constructor(config?: Partial<ModelRouterConfig>) {
     super();
@@ -104,6 +106,24 @@ export class ModelRouter extends EventEmitter {
   }): RoutingDecision {
     const depth = request.depth ?? 0;
     const confidence = request.confidence ?? 0.5;
+
+    // Enforce maxCascadeDepth
+    if (depth >= this.config.maxCascadeDepth) {
+      throw new Error(
+        `Cascade depth limit reached (${this.config.maxCascadeDepth}). ` +
+        `Cannot cascade further for task at depth ${depth}`
+      );
+    }
+
+    // Enforce maxConcurrentRoutes
+    if (this.activeRoutes >= this.config.maxConcurrentRoutes) {
+      throw new Error(
+        `Concurrent route limit reached (${this.config.maxConcurrentRoutes}). ` +
+        `Cannot route additional tasks`
+      );
+    }
+
+    this.activeRoutes++;
 
     // Get ordered tiers
     const orderedTiers = [...this.tiers.values()]
@@ -392,24 +412,41 @@ export class ModelRouter extends EventEmitter {
     const decision = this.decisions.get(decisionId);
     if (!decision) return;
 
+    // Decrement active routes counter
+    if (this.activeRoutes > 0) {
+      this.activeRoutes--;
+    }
+
     // Update tier confidence threshold based on outcome
     const tier = this.tiers.get(decision.tier.id);
     if (tier) {
       const lr = this.config.learningRate;
-      const signal = outcome.success ? outcome.quality : 0;
 
-      // If this tier performed well, we can be more confident routing to it
-      // (lower the threshold slightly)
+      // Target-based learning: move threshold toward a target based on success/failure
       if (outcome.success && outcome.quality > 0.7) {
+        // Tier performed well — lower threshold to route more tasks here
+        const target = Math.max(0, tier.confidenceThreshold - 0.05);
         tier.confidenceThreshold = Math.max(0,
-          (1 - lr) * tier.confidenceThreshold + lr * (tier.confidenceThreshold - 0.02)
+          tier.confidenceThreshold + lr * (target - tier.confidenceThreshold)
         );
       }
-      // If it performed poorly, raise the threshold
       if (!outcome.success || outcome.quality < 0.3) {
+        // Tier performed poorly — raise threshold to route fewer tasks here
+        const target = Math.min(1, tier.confidenceThreshold + 0.05);
         tier.confidenceThreshold = Math.min(1,
-          (1 - lr) * tier.confidenceThreshold + lr * (tier.confidenceThreshold + 0.02)
+          tier.confidenceThreshold + lr * (target - tier.confidenceThreshold)
         );
+      }
+    }
+
+    // Update LoRA adapter stats if one was used for this task
+    for (const adapter of this.adapters.values()) {
+      if (adapter.baseModel === decision.tier.model) {
+        adapter.usageCount++;
+        // EMA update for success rate
+        const successSignal = outcome.success ? 1 : 0;
+        adapter.successRate = adapter.successRate * 0.95 + successSignal * 0.05;
+        break;
       }
     }
 

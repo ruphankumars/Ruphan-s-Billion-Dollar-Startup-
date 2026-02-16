@@ -23,6 +23,7 @@
 
 import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
+import { BoundedMap } from '../utils/bounded-map.js';
 import type {
   ReasoningEngineConfig,
   ReasoningStep,
@@ -50,16 +51,16 @@ export class ReasoningEngine extends EventEmitter {
   private running = false;
 
   // Reasoning chains
-  private chains: Map<string, ReasoningStep[]> = new Map();
+  private chains = new BoundedMap<string, ReasoningStep[]>(500);
 
   // Search trees
-  private searchTrees: Map<string, Map<string, SearchNode>> = new Map();
+  private searchTrees = new BoundedMap<string, Map<string, SearchNode>>(200);
 
   // Simulation results
-  private simulations: Map<string, SimulationTrajectory[]> = new Map();
+  private simulations = new BoundedMap<string, SimulationTrajectory[]>(200);
 
   // Judge verdicts
-  private verdicts: Map<string, JudgeVerdict> = new Map();
+  private verdicts = new BoundedMap<string, JudgeVerdict>(500);
 
   // Evolution rounds
   private evolutionHistory: EvolutionRound[] = [];
@@ -378,11 +379,11 @@ export class ReasoningEngine extends EventEmitter {
     for (let j = 0; j < numJudges; j++) {
       const judgeId = `judge_${j}`;
 
-      // Simulate judge evaluation: each judge scores each criterion
+      // Deterministic judge evaluation: each judge scores each criterion
       const criterionScores: Record<string, number> = {};
       for (const criterion of criteria) {
-        // Base score with some variance between judges
-        const baseScore = 0.7 + Math.random() * 0.3;
+        // Deterministic scoring based on output content and criterion
+        const baseScore = this.computeDeterministicScore(output, criterion);
         criterionScores[criterion] = Math.min(1, Math.max(0, baseScore));
       }
 
@@ -425,10 +426,10 @@ export class ReasoningEngine extends EventEmitter {
       }
     }
 
-    // Category scores
+    // Category scores — deterministic per criterion
     const categoryScores: Record<string, number> = {};
     for (const criterion of criteria) {
-      categoryScores[criterion] = 0.6 + Math.random() * 0.3;
+      categoryScores[criterion] = this.computeDeterministicScore(output, criterion);
     }
 
     const verdict: JudgeVerdict = {
@@ -528,6 +529,9 @@ export class ReasoningEngine extends EventEmitter {
     };
 
     this.evolutionHistory.push(evolutionRound);
+    if (this.evolutionHistory.length > 100) {
+      this.evolutionHistory.splice(0, this.evolutionHistory.length - 100);
+    }
     this.totalEvolutions++;
 
     this.emit('kernel:reasoning:evolved', {
@@ -657,10 +661,11 @@ export class ReasoningEngine extends EventEmitter {
     maxDepth: number
   ): { bestPath: string[]; bestScore: number } {
     const queue: SearchNode[] = [root];
+    let qHead = 0;
     let bestNode = root;
 
-    while (queue.length > 0 && nodes.size < maxNodes) {
-      const current = queue.shift()!;
+    while (qHead < queue.length && nodes.size < maxNodes) {
+      const current = queue[qHead++];
       if (current.depth >= maxDepth) continue;
 
       const children = this.expandNode(current, nodes, evaluator, 3);
@@ -854,6 +859,29 @@ export class ReasoningEngine extends EventEmitter {
     }
 
     return path;
+  }
+
+  private computeDeterministicScore(answer: string, context?: string): number {
+    // Length-relevance: 30% — Penalize very short or very long answers
+    const len = answer.length;
+    const lengthScore = len < 10 ? 0.2 : len > 5000 ? 0.5 : Math.min(1, len / 500);
+
+    // Keyword presence: 40% — Reward answers with substantive content
+    const keywords = ['because', 'therefore', 'result', 'means', 'since', 'given', 'shows', 'indicates'];
+    const lower = answer.toLowerCase();
+    const keywordHits = keywords.filter(kw => lower.includes(kw)).length;
+    const keywordScore = Math.min(1, keywordHits / 3);
+
+    // Context overlap: 30% — If context provided, measure overlap
+    let contextScore = 0.5; // default if no context
+    if (context) {
+      const contextWords = new Set(context.toLowerCase().split(/\s+/).filter(w => w.length > 3));
+      const answerWords = answer.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+      const overlap = answerWords.filter(w => contextWords.has(w)).length;
+      contextScore = Math.min(1, overlap / Math.max(1, contextWords.size * 0.3));
+    }
+
+    return lengthScore * 0.3 + keywordScore * 0.4 + contextScore * 0.3;
   }
 
   private executeZeroShot(

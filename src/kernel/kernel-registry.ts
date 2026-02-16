@@ -13,6 +13,7 @@
 
 import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
+import { CircularBuffer } from '../utils/circular-buffer.js';
 import type {
   KernelPrimitiveId,
   KernelLayer,
@@ -50,8 +51,7 @@ export class KernelRegistry extends EventEmitter {
   private config: KernelConfig;
   private running = false;
   private primitives: Map<KernelPrimitiveId, RegisteredPrimitive> = new Map();
-  private callHistory: KernelCallRecord[] = [];
-  private readonly maxHistorySize = 1000;
+  private callHistory = new CircularBuffer<KernelCallRecord>(1000);
   private activeCalls = 0;
   private budget: KernelBudget = {
     totalCalls: 0,
@@ -160,17 +160,20 @@ export class KernelRegistry extends EventEmitter {
       timestamp: startTime,
     });
 
+    let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
     try {
-      // Execute with timeout
+      // Execute with timeout — store timer ref to prevent leak
       const result = await Promise.race([
         primitive.handler(input),
-        new Promise<never>((_, reject) =>
-          setTimeout(
+        new Promise<never>((_, reject) => {
+          timeoutTimer = setTimeout(
             () => reject(new Error(`Kernel call '${primitiveId}' timed out after ${this.config.callTimeoutMs}ms`)),
             this.config.callTimeoutMs
-          )
-        ),
+          );
+        }),
       ]);
+
+      clearTimeout(timeoutTimer);
 
       const durationMs = Date.now() - startTime;
 
@@ -201,6 +204,7 @@ export class KernelRegistry extends EventEmitter {
 
       return result as TOutput;
     } catch (error) {
+      clearTimeout(timeoutTimer);
       const durationMs = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -424,7 +428,7 @@ export class KernelRegistry extends EventEmitter {
       errorRate: totalCalls > 0 ? totalErrors / totalCalls : 0,
       avgCallDurationMs: totalCalls > 0 ? totalDuration / totalCalls : 0,
       layerStats: this.getLayerStats(),
-      callHistory: [...this.callHistory],
+      callHistory: this.callHistory.toArray(),
       config: { ...this.config },
     };
   }
@@ -452,9 +456,6 @@ export class KernelRegistry extends EventEmitter {
     if (!this.config.tracing) return;
 
     this.callHistory.push(record);
-    if (this.callHistory.length > this.maxHistorySize) {
-      this.callHistory.splice(0, this.callHistory.length - this.maxHistorySize);
-    }
   }
 
   private detectCircularDeps(): KernelPrimitiveId[][] {

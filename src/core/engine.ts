@@ -10,6 +10,8 @@ import type { ExecutionResult, CortexConfig, AgentResult, FileChange, QualityRep
 import { ExecutionContext } from './context.js';
 import { EventBus } from './events.js';
 import { getLogger } from './logger.js';
+import { AsyncMutex } from './mutex.js';
+import { BudgetExceededError } from './errors.js';
 
 // Subsystems
 import { PromptAnalyzer } from '../prompt/analyzer.js';
@@ -54,6 +56,11 @@ import { PluginRegistry } from '../plugins/registry.js';
 
 import { ReasoningOrchestrator } from '../reasoning/orchestrator.js';
 
+// Optional evolution/self-improvement integrations (lazy-loaded, not hard deps)
+import type { FeedbackLoop } from '../self-improve/feedback-loop.js';
+import type { MetaController } from '../evolution/meta-controller.js';
+import type { DecisionOutcome } from '../evolution/types.js';
+
 import { Timer } from '../utils/timer.js';
 
 const logger = getLogger();
@@ -89,7 +96,14 @@ export class CortexEngine {
   private metrics: MetricsCollector;
   private pluginRegistry: PluginRegistry;
   private reasoningOrchestrator: ReasoningOrchestrator | null = null;
+
+  // Optional evolution/self-improvement integrations (Issues 52-60)
+  // When set, the engine records execution feedback for strategy evolution
+  private feedbackLoop: FeedbackLoop | null = null;
+  private metaController: MetaController | null = null;
+
   private initialized = false;
+  private initMutex = new AsyncMutex();
 
   constructor(options: EngineOptions) {
     this.config = options.config;
@@ -150,112 +164,131 @@ export class CortexEngine {
    */
   private async ensureInitialized(): Promise<void> {
     if (this.initialized) return;
-    this.providerRegistry = await ProviderRegistry.create(this.config);
+    await this.initMutex.withLock(async () => {
+      if (this.initialized) return; // Double-check after lock
+      this.providerRegistry = await ProviderRegistry.create(this.config);
 
-    // Wire plugin-registered tools into the tool registry
-    for (const tool of this.pluginRegistry.getTools()) {
-      if (!this.toolRegistry.has(tool.name)) {
-        this.toolRegistry.register(tool);
-        logger.debug({ tool: tool.name }, 'Plugin tool merged into tool registry');
-      }
-    }
-
-    // Wire plugin-registered providers into the provider registry
-    for (const [name, provider] of this.pluginRegistry.getProviders()) {
-      if (!this.providerRegistry.has(name)) {
-        this.providerRegistry.register(name, provider);
-        logger.debug({ provider: name }, 'Plugin provider merged into provider registry');
-      }
-    }
-
-    // Wire plugin-registered gates — the verifier is rebuilt with gate list
-    const pluginGates = this.pluginRegistry.getGates();
-    if (pluginGates.size > 0) {
-      for (const [name, gate] of pluginGates) {
-        this.verifier.addGate(name, gate);
-        logger.debug({ gate: name }, 'Plugin gate merged into verifier');
-      }
-    }
-
-    // Initialize pool + coordinator if provider is available
-    const provider = this.getProviderFromRegistry();
-    if (provider) {
-      const tools = this.toolRegistry.list();
-      const maxParallel = this.config.agents?.maxParallel ?? 4;
-      const useFork = this.config.agents?.useChildProcess === true && maxParallel > 1;
-
-      // Upgrade to IPC bus when running in fork mode
-      if (useFork) {
-        const ipcBus = new IPCMessageBus();
-        this.messageBus = ipcBus;
-        this.handoffManager = new HandoffManager(ipcBus);
-      }
-
-      // Resolve worker script relative to this module for portability
-      const workerScript = new URL('../agents/worker.js', import.meta.url).pathname;
-
-      this.pool = new AgentPool({
-        maxWorkers: maxParallel,
-        workerScript,
-        useChildProcess: useFork,
-        provider,
-        tools,
-        toolContext: { workingDir: this.projectDir, executionId: 'engine' },
-      });
-
-      let worktreeManager: WorktreeManager | undefined;
-      let mergeManager: MergeManager | undefined;
-
-      if (this.config.agents?.worktreesEnabled !== false) {
-        worktreeManager = new WorktreeManager(this.projectDir);
-        if (worktreeManager.isAvailable()) {
-          mergeManager = new MergeManager(this.projectDir);
-        } else {
-          worktreeManager = undefined;
+      // Wire plugin-registered tools into the tool registry
+      for (const tool of this.pluginRegistry.getTools()) {
+        if (!this.toolRegistry.has(tool.name)) {
+          this.toolRegistry.register(tool);
+          logger.debug({ tool: tool.name }, 'Plugin tool merged into tool registry');
         }
       }
 
-      this.coordinator = new SwarmCoordinator({
-        provider,
-        tools,
-        toolContext: { workingDir: this.projectDir, executionId: 'engine' },
-        events: this.events,
-        maxParallel,
-        pool: this.pool,
-        worktreeManager,
-        mergeManager,
-        messageBus: this.messageBus,
-      });
-
-      // Start the handoff executor for async task delegation
-      this.handoffExecutor = new HandoffExecutor({
-        provider,
-        tools,
-        toolContext: { workingDir: this.projectDir, executionId: 'engine' },
-        messageBus: this.messageBus,
-        handoffManager: this.handoffManager,
-      });
-      this.handoffExecutor.start();
-    }
-
-    // Initialize reasoning orchestrator if enabled
-    if (this.config.reasoning?.enabled) {
-      this.reasoningOrchestrator = new ReasoningOrchestrator(
-        this.config.reasoning as any,
-      );
-
-      if (this.config.reasoning.strategies?.rag?.enabled !== false) {
-        await this.reasoningOrchestrator.initializeRAG(this.projectDir);
+      // Wire plugin-registered providers into the provider registry
+      for (const [name, provider] of this.pluginRegistry.getProviders()) {
+        if (!this.providerRegistry.has(name)) {
+          this.providerRegistry.register(name, provider);
+          logger.debug({ provider: name }, 'Plugin provider merged into provider registry');
+        }
       }
 
-      if (this.config.reasoning.strategies?.toolDiscovery?.enabled !== false) {
-        this.reasoningOrchestrator.initializeToolDiscovery(this.toolRegistry);
+      // Wire plugin-registered gates — the verifier is rebuilt with gate list
+      const pluginGates = this.pluginRegistry.getGates();
+      if (pluginGates.size > 0) {
+        for (const [name, gate] of pluginGates) {
+          this.verifier.addGate(name, gate);
+          logger.debug({ gate: name }, 'Plugin gate merged into verifier');
+        }
       }
 
-      logger.info('CortexEngine: reasoning orchestrator initialized');
-    }
+      // Initialize pool + coordinator if provider is available
+      const provider = this.getProviderFromRegistry();
+      if (provider) {
+        const tools = this.toolRegistry.list();
+        const maxParallel = this.config.agents?.maxParallel ?? 4;
+        const useFork = this.config.agents?.useChildProcess === true && maxParallel > 1;
 
-    this.initialized = true;
+        // Upgrade to IPC bus when running in fork mode
+        if (useFork) {
+          const ipcBus = new IPCMessageBus();
+          this.messageBus = ipcBus;
+          this.handoffManager = new HandoffManager(ipcBus);
+        }
+
+        // Resolve worker script relative to this module for portability
+        const workerScript = new URL('../agents/worker.js', import.meta.url).pathname;
+
+        this.pool = new AgentPool({
+          maxWorkers: maxParallel,
+          workerScript,
+          useChildProcess: useFork,
+          provider,
+          tools,
+          toolContext: { workingDir: this.projectDir, executionId: 'engine' },
+        });
+
+        let worktreeManager: WorktreeManager | undefined;
+        let mergeManager: MergeManager | undefined;
+
+        if (this.config.agents?.worktreesEnabled !== false) {
+          worktreeManager = new WorktreeManager(this.projectDir);
+          if (worktreeManager.isAvailable()) {
+            mergeManager = new MergeManager(this.projectDir);
+          } else {
+            worktreeManager = undefined;
+          }
+        }
+
+        // NOTE (Issues 66-70): When config.agents.topology === 'graph',
+        // this should use GraphOrchestrator from src/agents/graph-orchestrator.ts
+        // instead of SwarmCoordinator for dependency-graph-based execution.
+        // Currently defaults to SwarmCoordinator (linear-wave) for backward compat.
+        this.coordinator = new SwarmCoordinator({
+          provider,
+          tools,
+          toolContext: { workingDir: this.projectDir, executionId: 'engine' },
+          events: this.events,
+          maxParallel,
+          pool: this.pool,
+          worktreeManager,
+          mergeManager,
+          messageBus: this.messageBus,
+        });
+
+        // Start the handoff executor for async task delegation
+        this.handoffExecutor = new HandoffExecutor({
+          provider,
+          tools,
+          toolContext: { workingDir: this.projectDir, executionId: 'engine' },
+          messageBus: this.messageBus,
+          handoffManager: this.handoffManager,
+        });
+        this.handoffExecutor.start();
+      }
+
+      // Initialize reasoning orchestrator if enabled
+      if (this.config.reasoning?.enabled) {
+        this.reasoningOrchestrator = new ReasoningOrchestrator(
+          this.config.reasoning as any,
+        );
+
+        if (this.config.reasoning.strategies?.rag?.enabled !== false) {
+          await this.reasoningOrchestrator.initializeRAG(this.projectDir);
+        }
+
+        if (this.config.reasoning.strategies?.toolDiscovery?.enabled !== false) {
+          this.reasoningOrchestrator.initializeToolDiscovery(this.toolRegistry);
+        }
+
+        logger.info('CortexEngine: reasoning orchestrator initialized');
+      }
+
+      this.initialized = true;
+    });
+  }
+
+  private checkBudget(): void {
+    if (!this.budgetManager) return;
+    try {
+      if (this.budgetManager.isExceeded) {
+        const budget = this.config.budget?.maxCostPerRun ?? this.config.cost?.budgetPerRun ?? 5.0;
+        throw new BudgetExceededError(this.budgetManager.totalSpent, budget);
+      }
+    } catch (e) {
+      if (e instanceof BudgetExceededError) throw e;
+    }
   }
 
   private getProviderFromRegistry(): LLMProvider | undefined {
@@ -312,6 +345,9 @@ export class CortexEngine {
       const plan = this.stagePlan(tasks);
       this.events.emit('plan:created', plan);
       this.events.emit('stage:complete', { stage: 'plan', result: plan });
+
+      // Budget gate: abort before execution if budget is already exceeded
+      this.checkBudget();
 
       // Stage 6: EXECUTE
       context.setStage('execute');
@@ -425,6 +461,49 @@ export class CortexEngine {
       this.events.emit('engine:complete', executionResult);
       logger.info({ duration: elapsed, cost: costSummary.totalCost }, 'Engine execution completed');
 
+      // ─── Post-Execution Evolution Feedback (Issues 52-60) ──────────
+      // Record execution outcomes into the self-improvement loop and
+      // meta-controller when they are wired in. These are best-effort
+      // and must never break the execution pipeline.
+      try {
+        if (this.feedbackLoop) {
+          this.feedbackLoop.recordOutcome({
+            taskId: context.id,
+            outcome: executionResult.success ? 'success' : 'partial',
+            metrics: {
+              quality: (qualityReport.overallScore ?? 100) / 100,
+              speed: Math.min(1, 10000 / Math.max(1, elapsed)),
+              cost: Math.min(1, 1 / Math.max(0.01, costSummary.totalCost)),
+              tokenEfficiency: Math.min(1, 1000 / Math.max(1, costSummary.totalTokens)),
+            },
+            strategyUsed: this.reasoningOrchestrator ? 'reasoning-orchestrator' : 'direct-agent',
+            context: { prompt: prompt.substring(0, 200), stages: stageSpans.length },
+          });
+        }
+      } catch (fbErr) {
+        logger.warn({ error: fbErr }, 'FeedbackLoop.recordOutcome failed (non-fatal)');
+      }
+
+      try {
+        if (this.metaController) {
+          // Find the most recent decision for this execution (if one was made)
+          const decision = this.metaController.getDecision?.(context.id);
+          if (decision) {
+            const outcome: DecisionOutcome = {
+              decisionId: decision.id,
+              success: executionResult.success,
+              qualityScore: (qualityReport.overallScore ?? 100) / 100,
+              speedMs: elapsed,
+              tokenCost: costSummary.totalTokens,
+              feedback: executionResult.success ? 'completed' : 'partial-failure',
+            };
+            this.metaController.recordOutcome(decision.id, outcome);
+          }
+        }
+      } catch (mcErr) {
+        logger.warn({ error: mcErr }, 'MetaController.recordOutcome failed (non-fatal)');
+      }
+
       return executionResult;
     } catch (error) {
       const elapsed = timer.elapsed;
@@ -433,6 +512,16 @@ export class CortexEngine {
       this.tracer.endSpan(trace.id, 'error', { error: err.message });
       logger.error({ error: err.message, duration: elapsed }, 'Engine execution failed');
       this.events.emit('engine:error', { error: err.message });
+
+      // Save partial execution info to memory
+      if (this.memoryManager) {
+        try {
+          await this.memoryManager.store(
+            `Partial execution failed: ${err.message?.substring(0, 200)}`,
+            { type: 'episodic', importance: 0.3, tags: ['partial-failure'], source: 'engine' }
+          );
+        } catch { /* best effort */ }
+      }
 
       return {
         success: false,
@@ -762,6 +851,32 @@ export class CortexEngine {
 
   getHandoffExecutor(): HandoffExecutor | null {
     return this.handoffExecutor;
+  }
+
+  /**
+   * Set an optional FeedbackLoop for self-improvement integration.
+   * When set, execution outcomes are recorded after each successful run.
+   * (Issues 52-60: Evolution <-> Engine wiring)
+   */
+  setFeedbackLoop(loop: FeedbackLoop | null): void {
+    this.feedbackLoop = loop;
+  }
+
+  getFeedbackLoop(): FeedbackLoop | null {
+    return this.feedbackLoop;
+  }
+
+  /**
+   * Set an optional MetaController for evolution integration.
+   * When set, orchestration decisions and outcomes are recorded per execution.
+   * (Issues 52-60: Evolution <-> Engine wiring)
+   */
+  setMetaController(controller: MetaController | null): void {
+    this.metaController = controller;
+  }
+
+  getMetaController(): MetaController | null {
+    return this.metaController;
   }
 
   async shutdown(): Promise<void> {

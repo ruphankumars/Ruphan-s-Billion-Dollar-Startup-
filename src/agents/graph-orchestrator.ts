@@ -9,6 +9,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
+import { CircularBuffer } from '../utils/circular-buffer.js';
 import type {
   AgentNode,
   AgentEdge,
@@ -45,7 +46,7 @@ export class GraphOrchestrator extends EventEmitter {
   private nodes: Map<string, AgentNode> = new Map();
   private edges: Map<string, AgentEdge> = new Map();
   private messageQueue: GraphMessage[] = [];
-  private selectionHistory: SubsetSelection[] = [];
+  private selectionHistory = new CircularBuffer<SubsetSelection>(1000);
   private topologyVersion = 0;
   private running = false;
   private updateTimer: ReturnType<typeof setInterval> | null = null;
@@ -395,6 +396,7 @@ export class GraphOrchestrator extends EventEmitter {
     this.totalSelections++;
     this.selectionScoreSum += selection.score;
 
+
     this.emit('graph:agents:selected', {
       timestamp: Date.now(),
       selection,
@@ -700,13 +702,15 @@ export class GraphOrchestrator extends EventEmitter {
     success: boolean,
     quality: number,
   ): void {
-    // Find the selection in history by matching index
+    // Find the selection in history by matching index.
     // (selectionId is treated as the index in the history)
+    // Since selectionHistory is a CircularBuffer, convert to array for index access.
+    const historyArray = this.selectionHistory.toArray();
     const selectionIndex = parseInt(selectionId, 10);
     const selection =
-      !isNaN(selectionIndex) && selectionIndex >= 0 && selectionIndex < this.selectionHistory.length
-        ? this.selectionHistory[selectionIndex]
-        : this.selectionHistory[this.selectionHistory.length - 1];
+      !isNaN(selectionIndex) && selectionIndex >= 0 && selectionIndex < historyArray.length
+        ? historyArray[selectionIndex]
+        : this.selectionHistory.latest();
 
     if (!selection) return;
 
@@ -943,23 +947,50 @@ export class GraphOrchestrator extends EventEmitter {
   }
 
   /**
-   * Compute the average shortest path length over all reachable pairs
-   * of nodes. Uses BFS from each node.
+   * Estimate the average shortest path length by sampling random pairs.
+   * Samples up to 50 random pairs instead of computing all O(N^2) pairs
+   * (which requires O(N^2) BFS calls, effectively O(N^3) for dense graphs).
    */
   private computeAvgPathLength(): number {
     const nodeIds = [...this.nodes.keys()];
     if (nodeIds.length < 2) return 0;
 
+    const MAX_PAIRS = 50;
+    const totalPairs = nodeIds.length * (nodeIds.length - 1);
     let totalLength = 0;
     let pathCount = 0;
 
-    for (const source of nodeIds) {
-      for (const target of nodeIds) {
-        if (source === target) continue;
+    if (totalPairs <= MAX_PAIRS) {
+      // Small graph: compute all pairs exactly
+      for (const source of nodeIds) {
+        for (const target of nodeIds) {
+          if (source === target) continue;
+          const path = this.getShortestPath(source, target);
+          if (path.length > 1) {
+            totalLength += path.length - 1;
+            pathCount++;
+          }
+        }
+      }
+    } else {
+      // Large graph: sample random pairs
+      const sampled = new Set<string>();
+      let attempts = 0;
+      const maxAttempts = MAX_PAIRS * 3; // avoid infinite loop on sparse graphs
 
-        const path = this.getShortestPath(source, target);
+      while (sampled.size < MAX_PAIRS && attempts < maxAttempts) {
+        attempts++;
+        const srcIdx = Math.floor(Math.random() * nodeIds.length);
+        const tgtIdx = Math.floor(Math.random() * nodeIds.length);
+        if (srcIdx === tgtIdx) continue;
+
+        const pairKey = `${srcIdx}:${tgtIdx}`;
+        if (sampled.has(pairKey)) continue;
+        sampled.add(pairKey);
+
+        const path = this.getShortestPath(nodeIds[srcIdx], nodeIds[tgtIdx]);
         if (path.length > 1) {
-          totalLength += path.length - 1; // edges, not nodes
+          totalLength += path.length - 1;
           pathCount++;
         }
       }

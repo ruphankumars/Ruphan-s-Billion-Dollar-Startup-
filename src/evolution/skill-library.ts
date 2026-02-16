@@ -13,6 +13,7 @@
 
 import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
+import { readFile, writeFile } from 'node:fs/promises';
 import type { SkillLibraryConfig, Skill, SkillCategory } from './types.js';
 
 const DEFAULT_CONFIG: Required<SkillLibraryConfig> = {
@@ -20,6 +21,7 @@ const DEFAULT_CONFIG: Required<SkillLibraryConfig> = {
   minUsageForRetention: 1,
   expiryMs: 0, // Never expire by default
   enableComposition: true,
+  persistPath: '', // Empty = no persistence by default
 };
 
 export class SkillLibrary extends EventEmitter {
@@ -36,12 +38,31 @@ export class SkillLibrary extends EventEmitter {
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
-  start(): void {
+  async start(): Promise<void> {
+    // Load persisted skills if a persistPath is configured (Issues 76-78)
+    if (this.config.persistPath) {
+      try {
+        const data = await readFile(this.config.persistPath, 'utf-8');
+        const skills: Skill[] = JSON.parse(data);
+        this.importSkills(skills);
+      } catch {
+        // File does not exist or is invalid — start fresh (not an error)
+      }
+    }
     this.running = true;
   }
 
-  stop(): void {
+  async stop(): Promise<void> {
     this.running = false;
+    // Persist skills to disk if a persistPath is configured (Issues 76-78)
+    if (this.config.persistPath) {
+      try {
+        const skills = this.exportSkills();
+        await writeFile(this.config.persistPath, JSON.stringify(skills, null, 2), 'utf-8');
+      } catch {
+        // Best-effort persistence — do not throw on failure
+      }
+    }
   }
 
   isRunning(): boolean {

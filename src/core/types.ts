@@ -31,6 +31,14 @@ export const CortexConfigSchema = z.object({
     maxIterations: z.number().min(1).max(100).default(25),
     worktreesEnabled: z.boolean().default(true),
     useChildProcess: z.boolean().default(false),
+    /**
+     * Agent orchestration topology (Issues 66-70: GraphOrchestrator <-> Engine).
+     * - 'linear': Use SwarmCoordinator with wave-based linear execution (default).
+     * - 'graph': Use GraphOrchestrator for dependency-graph-based agent selection.
+     *   When 'graph' is set, the engine should use GraphOrchestrator instead of
+     *   SwarmCoordinator for complex multi-dependency task execution.
+     */
+    topology: z.enum(['linear', 'graph']).default('linear'),
   }).default({}),
   cost: z.object({
     budgetPerRun: z.number().default(1.0),

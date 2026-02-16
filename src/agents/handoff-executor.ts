@@ -112,7 +112,14 @@ export class HandoffExecutor {
     };
 
     if (this.active.size >= this.maxConcurrent) {
-      logger.warn({ handoffId: payload.handoffId }, 'Handoff queue full, deferring');
+      logger.warn({ handoffId: payload.handoffId }, 'Handoff queue at capacity');
+      // Notify the sender that their handoff was dropped due to capacity
+      this.messageBus.send({
+        from: 'handoff-executor',
+        to: message.from,
+        type: 'handoff:dropped',
+        payload: { handoffId: payload.handoffId, reason: 'capacity' },
+      });
       return;
     }
 

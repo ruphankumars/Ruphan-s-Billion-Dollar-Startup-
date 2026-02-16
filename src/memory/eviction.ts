@@ -129,7 +129,9 @@ export class MemoryEvictor {
       };
     });
 
-    // Filter out protected memories
+    // Filter out protected memories: entries with importance >= protectedThreshold
+    // are never evicted, regardless of recency or access patterns. This ensures
+    // high-value memories (e.g., core rules, critical context) are always retained.
     const evictable = candidates.filter(c => c.importance < protectedThreshold);
 
     // Sort by score (lowest score = evict first)

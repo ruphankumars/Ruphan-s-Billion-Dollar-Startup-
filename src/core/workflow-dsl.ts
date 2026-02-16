@@ -587,8 +587,6 @@ export class WorkflowEngine {
 
   private evaluateCondition(expression: string, state: WorkflowState): boolean {
     try {
-      // Simple expression evaluator for step references
-      // e.g., "steps.analyze.output.complexity === 'high'"
       const context: Record<string, unknown> = {
         steps: {} as Record<string, unknown>,
         inputs: state.inputs,
@@ -603,12 +601,42 @@ export class WorkflowEngine {
         };
       }
 
-      // Safe eval using Function constructor with limited scope
-      const fn = new Function('steps', 'inputs', `return ${expression}`);
-      return Boolean(fn(context.steps, context.inputs));
+      return this.safeEvalCondition(expression, context);
     } catch {
       return false;
     }
+  }
+
+  private safeEvalCondition(expression: string, context: Record<string, unknown>): boolean {
+    // Strip comparison operators and string literals, then reject dangerous characters
+    const stripped = expression.replace(/[!=<>]=?/g, '').replace(/['"][^'"]*['"]/g, '');
+    if (/[;{}()\[\]`$\\]/.test(stripped)) return false;
+
+    const match = expression.match(
+      /^([\w.]+)\s*(===|!==|==|!=|>=|<=|>|<)\s*(?:'([^']*)'|"([^"]*)"|(\d+(?:\.\d+)?)|(\w+))$/
+    );
+    if (!match) return false;
+
+    const [, path, op, s1, s2, numStr, ident] = match;
+    const left = this.resolvePath(path, context);
+    const right = s1 ?? s2 ?? (numStr !== undefined ? Number(numStr) : ident === 'true' ? true : ident === 'false' ? false : ident);
+
+    switch (op) {
+      case '===': case '==': return left === right;
+      case '!==': case '!=': return left !== right;
+      case '>': return Number(left) > Number(right);
+      case '<': return Number(left) < Number(right);
+      case '>=': return Number(left) >= Number(right);
+      case '<=': return Number(left) <= Number(right);
+      default: return false;
+    }
+  }
+
+  private resolvePath(path: string, context: Record<string, unknown>): unknown {
+    return path.split('.').reduce<unknown>((obj, key) => {
+      if (obj == null || typeof obj !== 'object') return undefined;
+      return (obj as Record<string, unknown>)[key];
+    }, context);
   }
 
   // ─── Helpers ──────────────────────────────────────────────────

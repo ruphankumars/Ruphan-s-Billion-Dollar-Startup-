@@ -14,6 +14,7 @@
 
 import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
+import { readFile, writeFile } from 'node:fs/promises';
 import type {
   StrategyEvolverConfig,
   StrategyVariant,
@@ -26,6 +27,7 @@ const DEFAULT_CONFIG: Required<StrategyEvolverConfig> = {
   minSamples: 5,
   maxVariants: 20,
   crossTaskTransfer: true,
+  persistPath: '', // Empty = no persistence by default
 };
 
 export class StrategyEvolver extends EventEmitter {
@@ -41,13 +43,59 @@ export class StrategyEvolver extends EventEmitter {
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
-  start(): void {
+  async start(): Promise<void> {
     this.running = true;
     this.initializeDefaultStrategies();
+    // Load persisted variants if a persistPath is configured (Issues 76-78)
+    if (this.config.persistPath) {
+      try {
+        const data = await readFile(this.config.persistPath, 'utf-8');
+        const saved: Array<{
+          name: string;
+          id: string;
+          config: Record<string, unknown>;
+          weight: number;
+          taskTypePerformance: Record<string, PerformanceMetric>;
+          generationNumber: number;
+          parentId: string | null;
+        }> = JSON.parse(data);
+        for (const entry of saved) {
+          const variant: StrategyVariant = {
+            id: entry.id,
+            name: entry.name,
+            config: entry.config,
+            weight: entry.weight,
+            taskTypePerformance: new Map(Object.entries(entry.taskTypePerformance ?? {})),
+            generationNumber: entry.generationNumber,
+            parentId: entry.parentId,
+          };
+          this.variants.set(variant.name, variant);
+        }
+      } catch {
+        // File does not exist or is invalid — start fresh (not an error)
+      }
+    }
   }
 
-  stop(): void {
+  async stop(): Promise<void> {
     this.running = false;
+    // Persist variants to disk if a persistPath is configured (Issues 76-78)
+    if (this.config.persistPath) {
+      try {
+        const serializable = [...this.variants.values()].map(v => ({
+          id: v.id,
+          name: v.name,
+          config: v.config,
+          weight: v.weight,
+          taskTypePerformance: Object.fromEntries(v.taskTypePerformance),
+          generationNumber: v.generationNumber,
+          parentId: v.parentId,
+        }));
+        await writeFile(this.config.persistPath, JSON.stringify(serializable, null, 2), 'utf-8');
+      } catch {
+        // Best-effort persistence — do not throw on failure
+      }
+    }
   }
 
   isRunning(): boolean {

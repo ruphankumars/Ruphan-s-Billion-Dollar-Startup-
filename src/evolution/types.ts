@@ -168,6 +168,8 @@ export interface SkillLibraryConfig {
   expiryMs: number;
   /** Enable skill composition (combining multiple skills) */
   enableComposition: boolean;
+  /** Optional file path for JSON persistence (Issues 76-78) */
+  persistPath?: string;
 }
 
 export interface Skill {
@@ -215,6 +217,8 @@ export interface StrategyEvolverConfig {
   maxVariants: number;
   /** Enable cross-task transfer learning */
   crossTaskTransfer: boolean;
+  /** Optional file path for JSON persistence (Issues 76-78) */
+  persistPath?: string;
 }
 
 export interface StrategyVariant {

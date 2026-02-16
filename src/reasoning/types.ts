@@ -75,6 +75,8 @@ export interface CandidateApproach {
   description: string;
   plan: string;
   score: number;
+  /** Optional metadata about the candidate, e.g., degradation info from parse failures */
+  metadata?: { degraded?: boolean; parseError?: string };
 }
 
 export interface DebaterArgument {

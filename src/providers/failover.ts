@@ -95,17 +95,29 @@ export class FailoverProvider implements LLMProvider {
     for (let i = 0; i < attemptsToTry; i++) {
       const provider = this.providers[i];
       try {
-        yield* provider.stream(request);
+        // Buffer all chunks from this provider. Only yield them after the
+        // stream completes successfully to avoid concatenating partial
+        // responses from different providers on mid-stream failover.
+        const buffer: LLMStreamChunk[] = [];
+        for await (const chunk of provider.stream(request)) {
+          buffer.push(chunk);
+        }
+
+        // Stream completed successfully — yield all buffered chunks
         this.recordSuccess(provider.name);
-        return; // Successfully streamed
+        for (const chunk of buffer) {
+          yield chunk;
+        }
+        return;
       } catch (err) {
+        // Discard any buffered partial response from this provider
         const error = err instanceof Error ? err : new Error(String(err));
         this.recordFailure(provider.name);
         errors.push({ provider: provider.name, error });
 
         logger.warn(
           { provider: provider.name, error: error.message, attempt: i + 1 },
-          'Provider stream failed, trying next',
+          'Provider stream failed, discarding partial response and trying next',
         );
       }
     }

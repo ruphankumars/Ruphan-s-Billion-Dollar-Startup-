@@ -142,10 +142,12 @@ export class RegressionDetector extends EventEmitter {
         // Check if we already have an active alert for this metric
         const existingAlert = this.alerts.get(name);
         if (existingAlert) {
-          // Update the existing alert with new values
+          // Update the existing alert with new values and include it in the
+          // returned array so callers see updated regressions, not just new ones.
           existingAlert.currentValue = currentAvg;
           existingAlert.previousValue = previousAvg;
           existingAlert.detectedAt = Date.now();
+          newAlerts.push(existingAlert);
           continue;
         }
 

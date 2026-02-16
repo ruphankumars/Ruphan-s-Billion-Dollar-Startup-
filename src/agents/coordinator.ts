@@ -112,6 +112,7 @@ export class SwarmCoordinator {
                   { taskId: result.taskId, conflicts: mergeResult.conflicts },
                   'Merge conflict during worktree merge',
                 );
+                result.success = false;
                 result.error = `Merge conflict: ${mergeResult.conflicts.join(', ')}`;
               }
             } catch (err) {

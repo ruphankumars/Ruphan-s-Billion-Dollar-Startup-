@@ -98,10 +98,19 @@ export class AutoFixer {
         success: true,
       });
     } catch (err) {
-      const execErr = err as Error & { stdout?: string; status?: number };
+      const execErr = err as Error & { stdout?: string; status?: number; killed?: boolean; signal?: string };
 
-      // ESLint exits with 1 if remaining unfixed issues exist — that's OK
-      if (execErr.status === 1) {
+      // Check for timeout / kill signal BEFORE checking exit status.
+      // execSync with a timeout option sends SIGTERM and sets killed=true.
+      if (execErr.killed || execErr.signal === 'SIGTERM') {
+        results.push({
+          file: '*',
+          description: 'ESLint timed out',
+          type: 'lint',
+          success: false,
+        });
+      } else if (execErr.status === 1) {
+        // ESLint exits with 1 if remaining unfixed issues exist — that's OK
         results.push({
           file: '*',
           description: `ESLint --fix applied (some issues remain)`,
@@ -145,7 +154,9 @@ export class AutoFixer {
         const lines = content.split('\n');
         let modified = false;
 
-        // Process issues in reverse line order to preserve line numbers
+        // Process issues in reverse line order (highest line number first) to
+        // preserve line numbers: splicing earlier lines would shift the indices
+        // of all subsequent lines, but processing from bottom-up avoids this.
         const sortedIssues = [...fileIssues].sort(
           (a, b) => (b.line ?? 0) - (a.line ?? 0),
         );

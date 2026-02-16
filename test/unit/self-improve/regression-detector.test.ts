@@ -131,7 +131,7 @@ describe('RegressionDetector', () => {
       expect(listener).toHaveBeenCalledOnce();
     });
 
-    it('does not duplicate alerts for the same metric on subsequent calls', () => {
+    it('returns updated alerts for the same metric on subsequent calls', () => {
       for (let i = 0; i < 5; i++) {
         detector.recordMetric('quality', 1.0);
       }
@@ -142,9 +142,11 @@ describe('RegressionDetector', () => {
       const firstAlerts = detector.detectRegressions();
       expect(firstAlerts).toHaveLength(1);
 
-      // Running detection again should not create a new alert
+      // Running detection again should return the updated (existing) alert
+      // so callers always see current regressions, not just new ones.
       const secondAlerts = detector.detectRegressions();
-      expect(secondAlerts).toHaveLength(0);
+      expect(secondAlerts).toHaveLength(1);
+      expect(secondAlerts[0].metric).toBe('quality');
     });
 
     it('clears alert when metric recovers', () => {

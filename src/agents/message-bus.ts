@@ -16,6 +16,7 @@ export interface AgentMessage {
 
 export type MessageType =
   | 'handoff'        // Hand off task to another agent
+  | 'handoff:dropped' // Handoff rejected due to capacity
   | 'status'         // Status update
   | 'result'         // Partial result
   | 'request'        // Request information

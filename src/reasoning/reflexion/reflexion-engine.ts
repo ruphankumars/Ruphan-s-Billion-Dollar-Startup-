@@ -47,12 +47,26 @@ export class ReflexionEngine {
     task: AgentTask,
     failedResult: ReasoningResult,
   ): Promise<ReasoningResult> {
+    // Respect the triggerOn configuration — skip reflection when not applicable.
+    const triggerOn = this.options.triggerOn ?? 'failure';
+    if (triggerOn === 'failure' && failedResult.success) return failedResult;
+    if (triggerOn === 'low-quality') {
+      const quality = (failedResult as any).quality ?? (failedResult as any).confidence ?? 1;
+      if (quality >= 0.7) return failedResult;
+    }
+    // 'both' triggers on either failure or low-quality, so only skip if
+    // the result is successful AND quality is high enough.
+    if (triggerOn === 'both' && failedResult.success) {
+      const quality = (failedResult as any).quality ?? (failedResult as any).confidence ?? 1;
+      if (quality >= 0.7) return failedResult;
+    }
+
     const startTime = Date.now();
     const thoughtSteps: ThoughtStep[] = [];
     let currentFailedResult = failedResult;
 
     this.logger.info(
-      { taskId: task.id, maxRetries: this.options.maxRetries },
+      { taskId: task.id, maxRetries: this.options.maxRetries, triggerOn },
       'ReflexionEngine: starting reflect-and-retry loop',
     );
 
